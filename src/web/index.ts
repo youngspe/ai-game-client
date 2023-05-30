@@ -1,6 +1,15 @@
+import React from 'react'
 import { AppRegistry } from 'react-native'
 
-import App from '../common/App'
+import App, { Device } from '../common/App'
 
-AppRegistry.registerComponent('App', () => App);
+const device: Device = {
+    window: {
+        setBackground(color) {
+            document.body.style.backgroundColor = color
+        },
+    }
+}
+
+AppRegistry.registerComponent('App', () => () => React.createElement(App, { device }));
 AppRegistry.runApplication('App', { rootTag: document.getElementById('react-root') })

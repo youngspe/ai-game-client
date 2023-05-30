@@ -14,6 +14,7 @@
   "author": "",
   "license": "ISC",
   "devDependencies": {
+    "@types/react": "^18.2.7",
     "@types/react-native": "^0.72.2",
     "@webpack-cli/generators": "^3.0.4",
     "css-loader": "^6.7.3",
@@ -28,6 +29,7 @@
     "webpack-dev-server": "^4.13.3"
   },
   "dependencies": {
+    "react": "^18.2.0",
     "react-native": "npm:react-native-web@^0.19.4",
     "rxjs-hooks": "^0.8.0-alpha.0"
   }
