@@ -14,8 +14,8 @@ export function createTheme<Props extends object & { children?: never }, Styles 
     const ThemeContext = createContext<Styles | null>(null)
 
     return {
-        Init(props: PropsWithChildren<Omit<Props, 'children'>>): React.JSX.Element {
-            return <ThemeContext.Provider value={create(props as Props)}></ThemeContext.Provider>
+        Init({ children, ...props }: PropsWithChildren<Props>): React.JSX.Element {
+            return <ThemeContext.Provider value={create(props as Props)}>{children}</ThemeContext.Provider>
         },
         use(): Styles {
             const styles = useContext(ThemeContext)
@@ -38,12 +38,22 @@ function bound<B>() {
 export const MyTheme = createTheme(({ accent, background, foreground }: { accent: string, background: string, foreground: string }) => {
     return useMemo(() => ({
         button: ({ pressed }: PressableStateCallbackType) => bound<ViewStyle>()({
-            backgroundColor: accent,
-            borderRadius: 4,
+            backgroundColor: pressed ? background : accent,
+            borderWidth: 1,
+            borderColor: foreground,
+            borderRadius: 6,
+            paddingHorizontal: 8,
+            paddingVertical: 4,
+        }),
+        buttonText: bound<TextStyle>()({
+
         }),
         text: bound<TextStyle>()({
             color: foreground,
         }),
+        accent,
+        background,
+        foreground,
     }), [accent, background, foreground])
 })
 

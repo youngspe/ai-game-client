@@ -3,12 +3,12 @@ import { Pressable, PressableProps, Text as ReactText, TextProps, TextStyle } fr
 import { MyTheme, useTheme } from '../../Theme'
 
 export function Button(
-    { onPress, children, style, textStyle, ...props }: PropsWithChildren<PressableProps & { textStyle: TextStyle }>,
+    { onPress, children, style, textStyle, ...props }: PropsWithChildren<PressableProps & { textStyle?: TextStyle }>,
 ) {
     const { button } = useTheme(MyTheme)
     return <Pressable
         onPress={onPress}
-        accessibilityRole='button'
+        role='button'
         style={state => [
             button(state),
             typeof style == 'function' ? style(state) : style,
@@ -19,7 +19,7 @@ export function Button(
     </Pressable>
 }
 
-export function Text({ style, ...props }: TextProps) {
+export function Text({ style, children, ...props }: TextProps) {
     const { text } = useTheme(MyTheme)
-    return <ReactText style={[text, style]} {...props} />
+    return <ReactText style={[text, style]} {...props}>{children}</ReactText>
 }

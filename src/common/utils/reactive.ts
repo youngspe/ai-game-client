@@ -77,7 +77,6 @@ export const Reactive = _Reactive
 export type UseReactive<T> = T extends Reactive<infer U> ? { readonly [K in keyof U]: UseReactive<U[K]> } : Readonly<T>
 
 function observeReactive<T, U extends Reactive<T> = Reactive<T>>(target: U, update: () => void): [UseReactive<U>, Subscription] {
-    const subject = new Subject<void>()
     const used: { [K in keyof T]?: boolean | [UseReactive<T[K]>, Subscription] } = {}
     const sub = new Subscription()
     sub.add(_Reactive.updates(target).subscribe(e => {
@@ -124,14 +123,20 @@ function observeReactive<T, U extends Reactive<T> = Reactive<T>>(target: U, upda
 }
 
 export function useReactive<T>(target: Reactive<T>): UseReactive<Reactive<T>> {
-    const obj = useRef<UseReactive<Reactive<T>>>()
     const [_state, setState] = useState({})
 
-    useEffect(() => {
-        const [out, sub] = observeReactive<T>(target, () => setState({}))
-        obj.current = out
-        return () => { sub.unsubscribe() }
-    })
+    const obj = useRef<[UseReactive<Reactive<T>>, Subscription]>()
+    obj.current ??= observeReactive<T>(target, () => setState({}))
 
-    return obj.current!
+    useEffect(() => {
+        obj.current ??= observeReactive<T>(target, () => setState({}))
+        const sub = obj.current?.[1]
+
+        return () => {
+            sub?.unsubscribe()
+            obj.current = undefined
+        }
+    }, [target])
+
+    return obj.current?.[0]! ?? target as UseReactive<Reactive<T>>
 }
