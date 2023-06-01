@@ -1,11 +1,32 @@
-import React from 'react'
-import { Button, Text } from "./widgets/styled";
-import { TextInput, View } from 'react-native';
+import React, { useState } from 'react'
+import { Button, Hr, Row, Rows, Text, TextInput } from "./widgets/styled";
+import { H1 } from './widgets/Heading';
+import { Page } from './widgets/Page';
+import { MainMenuViewModel } from '../viewModels/MainMenuViewModel';
+import { useAttachViewModel } from '../viewModels/ViewModel';
 
-export function MainMenu() {
-    return <View style={{ marginHorizontal: 'auto', gap: 10 }}>
-        <Text>Asdf</Text>
-        <Button>Start a new game!</Button>
-        <TextInput />
-    </View>
+export function MainMenu({ viewModel }: { viewModel: MainMenuViewModel }) {
+    const [joinCode, setJoinCode] = useState('')
+
+    useAttachViewModel(viewModel)
+    return <Page>
+        <H1>[untitled game]</H1>
+        <Rows>
+            <Text style={{ flexGrow: 0.25 }}>Enter your display name:</Text>
+            <TextInput placeholder='Type your name here' style={{ flexGrow: 1 }} />
+        </Rows>
+        <Hr />
+        <Row><Button onPress={() => viewModel.start()}>Start a new game</Button></Row>
+        <Hr />
+        <Rows>
+            <Text>Or join an existing game:</Text>
+            <TextInput
+                value={joinCode}
+                onChange={({ nativeEvent: { text } }) => setJoinCode(text)}
+                placeholder='Enter join code'
+                style={{ flexGrow: 1 }}
+            />
+            <Button style={{ flexGrow: 1, alignSelf: 'stretch' }} onPress={() => viewModel.join(joinCode)}>Join</Button>
+        </Rows>
+    </Page>
 }

@@ -21,7 +21,7 @@ function _Reactive<T extends object>(obj: T): Reactive<T> {
         get(_targ, _p, _recv) {
             const p = _p as keyof T
             if (!props[p]) {
-                const propSubject = new BehaviorSubject(obj[p])
+                let propSubject = new BehaviorSubject(obj[p])
                 observable.pipe(mergeMap(x => p in x ? of(x[p]) : NEVER)).subscribe(propSubject)
                 props[p] = propSubject
             }

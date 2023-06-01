@@ -1,6 +1,7 @@
 import React, { PropsWithChildren, useContext, useMemo } from 'react'
 import { createContext } from 'react'
-import { PressableStateCallbackType, StyleSheet, TextStyle, ViewStyle } from 'react-native'
+import { PixelRatio, PressableStateCallbackType, StyleSheet, TextStyle, ViewStyle } from 'react-native'
+import { ColorString, fade } from './utils/color'
 
 
 export interface Theme<in Props = never, out Styles extends {} = {}> {
@@ -29,32 +30,70 @@ export function useTheme<Styles extends {}>(theme: Theme<never, Styles>): Styles
     return theme.use()
 }
 
-function bound<B>() {
+function style<B>() {
     return function <T extends B>(value: T) {
         return value
     }
 }
 
-export const MyTheme = createTheme(({ accent, background, foreground }: { accent: string, background: string, foreground: string }) => {
-    return useMemo(() => ({
-        button: ({ pressed }: PressableStateCallbackType) => bound<ViewStyle>()({
-            backgroundColor: pressed ? background : accent,
-            borderWidth: 1,
-            borderColor: foreground,
-            borderRadius: 6,
-            paddingHorizontal: 8,
-            paddingVertical: 4,
-        }),
-        buttonText: bound<TextStyle>()({
+function scale(x: number) {
+    return x * PixelRatio.getFontScale()
+}
 
-        }),
-        text: bound<TextStyle>()({
-            color: foreground,
-        }),
-        accent,
-        background,
-        foreground,
-    }), [accent, background, foreground])
+export const MyTheme = createTheme(({ accent, background, foreground }: { accent: ColorString, background: ColorString, foreground: ColorString }) => {
+    return useMemo(() => {
+        const fontSize = scale(16)
+        const paddingHorizontal = scale(8)
+        const paddingVertical = scale(4)
+        const gap = scale(8)
+
+        const textContainerAttrs = {
+            borderRadius: scale(6),
+            paddingHorizontal,
+            paddingVertical,
+        }
+
+        return {
+            button: ({ pressed }: PressableStateCallbackType) => style<ViewStyle>()({
+                backgroundColor: pressed ? background : accent,
+                borderWidth: 1,
+                borderColor: foreground,
+                flexGrow: 1,
+                alignItems: 'stretch',
+                ...textContainerAttrs,
+            }),
+            buttonText: style<TextStyle>()({
+                textAlign: 'center',
+                fontWeight: 'bold',
+            }),
+            text: style<TextStyle>()({
+                color: foreground,
+            }),
+            textInput: style<TextStyle>()({
+                borderColor: foreground,
+                borderWidth: scale(1),
+                backgroundColor: background,
+                ...textContainerAttrs,
+
+            }),
+            heading: (level: number) => style<TextStyle>()({
+                textAlign: 'center',
+                fontSize: fontSize * (1 + 0.5 ** level),
+            }),
+            card: style<ViewStyle>()({
+                backgroundColor: fade(foreground, 5),
+                borderRadius: gap,
+                borderWidth: 1,
+                borderColor: fade(foreground, 4),
+                padding: gap,
+            }),
+            paddingHorizontal,
+            paddingVertical,
+            gap: scale(12),
+            fontSize,
+            accent,
+            background,
+            foreground,
+        }
+    }, [accent, background, foreground])
 })
-
-

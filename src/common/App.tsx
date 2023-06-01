@@ -1,24 +1,24 @@
 import React from 'react'
 import { MyTheme, ThemeProps } from './Theme'
-import { Text } from './components/widgets/styled'
 import { MainMenu } from './components/MainMenu'
+import { Lobby } from './components/Lobby'
+import { AppModel, Device } from './viewModels/AppModel'
+import { useReactive } from './utils/reactive'
+import { MainMenuViewModel } from './viewModels/MainMenuViewModel'
+import { LobbyViewModel } from './viewModels/LobbyViewModel'
 
-export interface Device {
-    window?: {
-        setBackground?: (color: string) => void
-    }
-}
-
-export default function App({ device }: { device: Device }) {
+export default function App({ appModel }: { appModel: AppModel }) {
+    let { currentViewModel } = useReactive(appModel.props)
     let themeProps: ThemeProps<typeof MyTheme> = {
         accent: '#0080FF',
         background: '#101010',
         foreground: '#E8E8E8',
     }
-    device.window?.setBackground?.(themeProps.background)
+    appModel.device.window?.setBackground?.(themeProps.background)
 
     return <MyTheme.Init {...themeProps}>
-        <MainMenu />
+        {currentViewModel instanceof MainMenuViewModel && <MainMenu viewModel={currentViewModel} />}
+        {currentViewModel instanceof LobbyViewModel && <Lobby viewModel={currentViewModel} />}
     </MyTheme.Init>
 }
 
