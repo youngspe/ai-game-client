@@ -1,10 +1,16 @@
+import { Subject } from "rxjs"
+import { ClientEvent, ServerEvent } from "../proto/Event"
 import { TokenStore } from "./TokenStore"
-
-export interface ApiClient {
-    createGame(): Promise<ApiResult>
-}
+import { asyncValues } from "./utils/rxUtils"
 
 export type ApiResult<T = unknown> = { ok: T } | { err: Response }
+
+export interface ApiClient {
+    createGame(): Promise<ApiResult<{ gameId: string }>>
+    joinGame(gameId: string): Promise<ApiResult>
+}
+
+const joinUriPath = (...parts: string[]) => parts.map(encodeURIComponent).join('/')
 
 export class DefaultApiClient implements ApiClient {
     private readonly _baseUrl: string
@@ -16,13 +22,20 @@ export class DefaultApiClient implements ApiClient {
         this._tokenStore = tokenStore
     }
 
-    async createGame(): Promise<ApiResult> {
+    async createGame(): Promise<ApiResult<{ gameId: string }>> {
         const res = await this._fetch('games', { method: 'POST' })
+        if (!res.ok) return { err: res }
+        const gameId = (await res.json()).gameId
+        return { ok: { gameId } }
+    }
+
+    async joinGame(gameId: string): Promise<ApiResult> {
+        const res = await this._fetch(joinUriPath('games', gameId, 'players'), { method: 'POST' })
         if (!res.ok) return { err: res }
         return { ok: null }
     }
 
-    private async _fetch(url: string, { headers, ...info }: RequestInit) {
+    private async _fetch(url: string, { headers, ...init }: RequestInit) {
         const newHeaders = new Headers(headers)
         const token = await this._initToken()
 
@@ -34,7 +47,7 @@ export class DefaultApiClient implements ApiClient {
 
         return await fetch(this._baseUrl + url, {
             headers: newHeaders,
-            ...info
+            ...init
         })
     }
 
@@ -58,5 +71,62 @@ export class DefaultApiClient implements ApiClient {
         }
 
         return token
+    }
+}
+
+
+export interface EventStream {
+    send(...events: ClientEvent[]): void
+    recv(): AsyncIterableIterator<ServerEvent>
+    close(): void
+}
+
+export class DefaultEventStream implements EventStream {
+    private _ws: WebSocket | null = null
+    private _subject = new Subject<ServerEvent>
+    private readonly _baseUrl: string
+    private _outBuf: ClientEvent[] = []
+    private readonly _gameId: string
+
+    constructor(baseUrl: string, gameId: string) {
+        this._baseUrl = baseUrl
+        this._gameId = gameId
+    }
+
+    async init() {
+        while (true) {
+            const ws = new WebSocket(this._baseUrl + joinUriPath('games', this._gameId, 'events'))
+            const success = await new Promise<boolean>(res => {
+                ws.onopen = () => res(true)
+                ws.onerror = () => res(false)
+            })
+            ws.onopen = null
+            ws.onerror = null
+            ws.onclose = () => {
+                ws.onclose = null
+                ws.onmessage = null
+                this._ws = null
+                this.init()
+            }
+
+            if (success) {
+                this._ws = ws
+                ws.send(JSON.stringify(this._outBuf))
+                this._outBuf = []
+                break
+            }
+        }
+    }
+
+    send(...events: ClientEvent[]) {
+        if (this._ws == null || this._ws.readyState <= WebSocket.OPEN) {
+            this._outBuf.push(...events)
+        } else {
+            this._ws.send(JSON.stringify(events))
+        }
+    }
+
+    recv() {
+        return asyncValues(this._subject)
     }
 }

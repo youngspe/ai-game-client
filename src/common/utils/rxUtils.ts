@@ -43,3 +43,46 @@ export function mapNotNull<T, U>(f: (item: T, index: number) => U): OperatorFunc
 export function filterIsInstance<T>(cls: new (...args: any) => T): OperatorFunction<unknown, T> {
     return mergeMap(item => item instanceof cls ? of(item) : NEVER)
 }
+
+export function asyncValues<T>(obs: Observable<T>): AsyncIterableIterator<T> {
+    const buffer: T[] = []
+    let resolver: ((item: [T] | null) => void) | null = null
+    let done = false
+
+    const sub = obs.subscribe({
+        next(value) {
+            if (resolver) {
+                resolver([value])
+                resolver = null
+            } else {
+                buffer.push(value)
+            }
+        },
+        complete() {
+            done = true
+            resolver?.(null)
+            resolver = null
+        },
+    })
+
+    return (async function* asyncValues() {
+        try {
+            while (true) {
+                while (buffer.length > 0) {
+                    const [value] = buffer.splice(0, 1)
+                    yield value
+                }
+
+                if (done) return 0
+
+                const out = await new Promise<[T] | null>(res => {
+                    resolver = res
+                })
+
+                if (out == null) return
+            }
+        } finally {
+            sub.unsubscribe()
+        }
+    })()
+}

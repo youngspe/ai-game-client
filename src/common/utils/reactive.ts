@@ -110,6 +110,13 @@ function observeReactive<T, U extends Reactive<T> = Reactive<T>>(target: U, upda
                     out = entry[0]
                 }
                 return out
+            } else if (value instanceof Array && _deepArray in value) {
+                const sub = new Subscription()
+                used[prop] = [value.map(x => {
+                    const [y, s] = observeReactive(x, update)
+                    sub.add(s)
+                    return y
+                }) as any, sub]
             } else {
                 used[prop] = true
                 return value
@@ -139,4 +146,52 @@ export function useReactive<T>(target: Reactive<T>): UseReactive<Reactive<T>> {
     }, [target])
 
     return obj.current?.[0]! ?? target as UseReactive<Reactive<T>>
+}
+
+type Prepend<X, Y> = Y extends any[] ? [X, ...Y] : never
+
+type DeepReactive<T> = T & (
+    T extends Reactive<any> ? T
+    : T extends [infer X, ...infer Y] ? Prepend<DeepReactive<X>, DeepReactive<Y>>
+    : T extends [] ? []
+    : T extends (infer X)[] ? DeepReactive<X>[]
+    : T extends object ? Reactive<{ [K in keyof T]: DeepReactive<T[K]> }>
+    : T
+)
+
+const _deepArray = Symbol()
+
+export function DeepReactive<T>(value: T): DeepReactive<T> {
+    const map = new WeakMap<any, any>()
+    function inner<T>(value: T): any {
+        if (map.has(value)) return map.get(value)
+        if (false
+            || value == null
+            || typeof value != 'object'
+            || Reactive.isReactive(value)
+            || _deepArray in value
+        ) return value
+
+        if (value instanceof Array) {
+            const arr = value.map(t => inner(t))
+
+            // These braces help avoid some ambiguous syntax
+            { (arr as any)[_deepArray] = null }
+
+            map.set(value, arr)
+            return arr
+        }
+
+        const inner: any = {}
+        if (map.has(value)) return map.get(value)
+        const reactive = Reactive(inner)
+        map.set(value, reactive)
+
+        for (let prop in value) {
+            reactive[prop] = inner(value[prop])
+        }
+
+        return reactive
+    }
+    return inner(value) as DeepReactive<T>
 }
