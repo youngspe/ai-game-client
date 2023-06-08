@@ -3,15 +3,18 @@ import { ascribe } from "../utils/types";
 import { MainMenuViewModel } from "./MainMenuViewModel";
 import { BaseViewModel, ViewModel } from "./ViewModel";
 import { Navigator } from "../utils/navigator";
+import { TokenStore } from "../TokenStore";
 
 export interface Device {
     window?: {
-        readonly setBackground?: (color: string) => void,
+        readonly setBackground?: (color: string) => void
     }
     history?: {
-        exit(): void,
-        onBackListener?: () => void,
+        exit(): void
+        onBackListener?: () => void
     }
+    tokenStore?: TokenStore
+    baseUrl: string,
 }
 
 export class AppModel implements Navigator {

@@ -17,6 +17,15 @@ const device: Device = {
             }
         }
     },
+    tokenStore: {
+        load() {
+            return localStorage.getItem('aiGameClient/token')
+        },
+        store(token: string) {
+            localStorage.setItem('aiGameClient/token', token)
+        },
+    },
+    baseUrl: '/api/',
 }
 
 addEventListener('popstate', ({ state }) => {
