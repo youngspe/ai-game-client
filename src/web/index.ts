@@ -25,8 +25,11 @@ const device: Device = {
             localStorage.setItem('aiGameClient/token', token)
         },
     },
-    baseUrl: '/api/',
+    baseUrlHttp: `${location.protocol}//${location.host}/api/`,
+    baseUrlWs: `${location.protocol == 'https:' ? 'wss:' : 'ws:'}//${location.host}/api`,
 }
+
+console.log(device)
 
 addEventListener('popstate', ({ state }) => {
     if (state == 'BACK') {

@@ -87,6 +87,8 @@ export class DefaultEventStream implements EventStream {
     private readonly _baseUrl: string
     private _outBuf: ClientEvent[] = []
     private readonly _gameId: string
+    private _closed = false
+    get closed() { return this._closed }
 
     constructor(baseUrl: string, gameId: string) {
         this._baseUrl = baseUrl
@@ -98,19 +100,26 @@ export class DefaultEventStream implements EventStream {
             const ws = new WebSocket(this._baseUrl + joinUriPath('games', this._gameId, 'events'))
             const success = await new Promise<boolean>(res => {
                 ws.onopen = () => res(true)
-                ws.onerror = () => res(false)
+                ws.onerror = ws.onclose = () => res(false)
             })
             ws.onopen = null
             ws.onerror = null
-            ws.onclose = () => {
-                ws.onclose = null
-                ws.onmessage = null
-                this._ws = null
-                this.init()
-            }
+            ws.onclose = null
 
             if (success) {
+                ws.onclose = () => {
+                    ws.onclose = null
+                    ws.onmessage = null
+                    this._ws = null
+                    if (!this._closed) {
+                        this.init()
+                    }
+                }
                 this._ws = ws
+                ws.onmessage = e => {
+                    const events: ServerEvent[] = JSON.parse(e.data)
+                    events.forEach(x => this._subject.next(x))
+                }
                 ws.send(JSON.stringify(this._outBuf))
                 this._outBuf = []
                 break
@@ -128,5 +137,10 @@ export class DefaultEventStream implements EventStream {
 
     recv() {
         return asyncValues(this._subject)
+    }
+
+    close() {
+        // TODO: handle recv and send when closed == true?
+        this._closed = true
     }
 }

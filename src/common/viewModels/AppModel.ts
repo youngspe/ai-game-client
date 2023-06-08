@@ -14,7 +14,8 @@ export interface Device {
         onBackListener?: () => void
     }
     tokenStore?: TokenStore
-    baseUrl: string,
+    baseUrlHttp: string,
+    baseUrlWs: string,
 }
 
 export class AppModel implements Navigator {
