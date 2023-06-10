@@ -1,6 +1,7 @@
 import { Subscription, SubscriptionLike } from 'rxjs';
 import { Closeable, useCloseable } from '../utils/Closeable';
 import { Navigator } from '../utils/navigator';
+import { useEffect } from 'react';
 
 export interface ViewModel {
     readonly navBehavior: ViewModel.NavBehavior
@@ -84,6 +85,6 @@ export namespace BaseViewModel {
 }
 
 export function useAttachViewModel<V extends ViewModel>(viewModel: V): V {
-    useCloseable(viewModel.attach())
+    useCloseable(() => viewModel.attach(), [viewModel])
     return viewModel
 }

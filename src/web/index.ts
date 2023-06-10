@@ -1,5 +1,5 @@
 import React from 'react'
-import { AppRegistry, PixelRatio } from 'react-native'
+import { AppRegistry } from 'react-native'
 
 import App from '../common/App'
 import { AppModel, Device } from '../common/viewModels/AppModel'

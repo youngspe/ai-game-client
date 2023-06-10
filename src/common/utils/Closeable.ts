@@ -28,7 +28,9 @@ export function using<C extends Closeable, R>(closeable: C, block: (closeable: C
 
 export const Closeable = _Closeable
 
-export function useCloseable<C extends Closeable>(closeable: C): C {
-    useEffect(() => () => { closeable.close() }, [closeable])
-    return closeable
+export function useCloseable<C extends Closeable>(closeable: () => C, deps?: React.DependencyList) {
+    useEffect(() => {
+        const c = closeable()
+        return () => { c.close() }
+    }, deps)
 }

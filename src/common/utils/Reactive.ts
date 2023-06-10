@@ -1,4 +1,4 @@
-import { NEVER, Observable, Subject, Subscription, distinctUntilChanged, filter, of, switchMap } from "rxjs"
+import { NEVER, Observable, Subject, Subscription, distinctUntilChanged, filter, of, skip, switchMap } from "rxjs"
 import { StateObservable } from "./rxUtils"
 import { addProp } from "./types"
 import { useEffect, useRef, useState } from "react"
@@ -15,14 +15,24 @@ interface ReactiveObject<T> {
 }
 
 export type Reactive<T> = T & (
-    T extends object ? ReactiveObject<T> : unknown
+    T extends object ? (object & ReactiveObject<T>) : unknown
 )
 
 const reactiveMap = new WeakMap<object, object>()
 
+function thisOrOrig<T>(target: T): T {
+    if (target == null || typeof target != 'object') return target
+    return (target as Partial<ReactiveObject<T>>)[_reactive]?.orig ?? target
+}
+
 export function Reactive<T>(target: T): Reactive<T> {
     if (target == null || typeof target != 'object') return target as Reactive<T>
-    if (Reactive.isReactive(target)) return target as Reactive<T>
+
+    const originalTarget = (target as Partial<ReactiveObject<T>>)[_reactive]?.orig
+    if (originalTarget != null && reactiveMap.has(originalTarget as object)) {
+        return reactiveMap.get(originalTarget as object) as Reactive<T>
+    }
+
     if (reactiveMap.has(target)) return reactiveMap.get(target) as Reactive<T>
     const subject = new Subject<Reactive.PropertyChange<T>>()
 
@@ -39,16 +49,16 @@ export function Reactive<T>(target: T): Reactive<T> {
         set(target, p, newVal, receiver) {
             let prop = p as keyof T
             const oldVal = target[prop]
-            const out = Reflect.set(target, prop, newVal, receiver)
-            if (oldVal !== newVal) {
+            if (thisOrOrig(oldVal) !== thisOrOrig(newVal)) {
+                const out = Reflect.set(target, prop, newVal, receiver)
                 subject.next({ prop, oldVal, newVal })
+                return out
             }
-            return out
+            return Reflect.set(target, prop, oldVal, receiver)
         },
     }) as Reactive<T> & object
 
     reactiveMap.set(target, proxy)
-
     return proxy
 }
 
@@ -67,9 +77,9 @@ export namespace Reactive {
         [K in P]-?: { prop: K, oldVal: T[K], newVal: T[K] }
     }[P]
 
-    export function isReactive<T>(target: T): target is Reactive<T> {
-        if (target == null || typeof target != 'object') return true
-        return (target as Partial<ReactiveObject<T>>)[_reactive] != null
+    export function isReactiveObject<T>(target: T): target is object & Reactive<T> {
+        if (target == null || typeof target != 'object') return false
+        return (target as Reactive<typeof target>)[_reactive] != null
     }
 
     export function updates<T>(target: Reactive<T>): Observable<PropertyChange<T>> {
@@ -98,7 +108,7 @@ export namespace Reactive {
 
                 constructor() {
                     super(s => {
-                        s.next(target[key])
+                        s.next(target?.[key])
                         return updates(target).pipe(filter(e => e.prop == key)).subscribe(() => {
                             s.next(this.value)
                         })
@@ -120,51 +130,60 @@ export namespace Reactive {
     }
 }
 
+const _useReactive = Symbol()
+
 export function useReactive<T>(target: Reactive<T>): T {
-    const [_state, setState] = useState(false)
-    type Entry = { [_ in string | symbol]?: { subbed: boolean, entry: Entry } }
+    target = Reactive(target)
+    const [_state, setState] = useState({})
+    type Entry = { [_ in string | symbol]?: Entry }
     const subbed = useRef<Entry>({}).current
-    const proxies = useRef(new WeakMap<any, any>()).current
-    const sub = useRef<Subscription | null>(new Subscription())
+    const proxies = useRef<WeakMap<any, any> | null>(new WeakMap())
 
-    const onUpdate = () => setState(!_state)
-
-    function getProxy<U>(obj: U, path: (keyof any)[], entry: Entry): U {
-        if (obj == null || typeof obj != 'object') return obj
-        if (proxies.has(obj)) return proxies.get(obj)
-
-        const proxy = new Proxy(obj, {
-            get(t, p, receiver) {
-                const propPath = [...path, p]
-                const propEntry = entry[p] ?? { subbed: false, entry: {} }
-                entry[p] = propEntry
-
-                const propValue = Reflect.get(t, p, receiver)
-
-                if (!propEntry.subbed && propValue == null || typeof propValue != 'object') {
-                    propEntry.subbed = true
-                    let first: [unknown] | null = [propValue]
-                    sub.current?.add(Reactive.prop(target, ...propPath).subscribe(x => {
-                        if (first != null && x !== first[0]) {
-                            first = null
-                            onUpdate()
-                        }
-                    }))
-                }
-
-                return getProxy(propValue, propPath, propEntry.entry)
-            },
-        })
-        proxies.set(obj, proxy)
-        return proxy
-    }
+    const onUpdate = () => setState({})
 
     useEffect(() => {
-        sub.current ??= new Subscription()
+        const sub = new Subscription()
+        proxies.current = null
+
+        function subscribeProps(subbed: Entry, path: (keyof any)[]) {
+            for (let prop in subbed) {
+                const newPath = [...path, prop]
+                sub.add(Reactive.prop(target, ...newPath).pipe(skip(1)).subscribe(onUpdate))
+                subscribeProps(subbed[prop]!, newPath)
+            }
+        }
+
+        subscribeProps(subbed, [])
         return () => {
-            sub.current?.unsubscribe()
+            sub.unsubscribe()
         }
     }, [target])
 
-    return getProxy(target, [], subbed)
+
+    if (proxies.current == null) {
+        return Reactive.original(target)
+    }
+
+    function getProxy<U>(obj: U, entry: Entry): U {
+        if (obj == null || typeof obj != 'object') return obj
+        if ((obj as any)[_useReactive] != null) obj = (obj as any)[_useReactive]
+        obj = Reactive.isReactiveObject(obj) ? Reactive(obj) : obj
+        if (proxies.current?.has(obj)) return proxies.current.get(obj)
+
+
+        const proxy = new Proxy(obj as U & object, {
+            get(t, p, receiver) {
+                if (p === _useReactive) return obj
+                const propValue = Reflect.get(t, p, receiver)
+                if (proxies.current == null) return propValue
+                const propEntry = entry[p] ?? {}
+                entry[p] = propEntry
+                return getProxy<any>(propValue, propEntry)
+            },
+        })
+        proxies.current?.set(obj, proxy)
+        return proxy
+    }
+
+    return getProxy(Reactive.original(target), subbed)
 }
