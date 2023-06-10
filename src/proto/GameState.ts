@@ -13,6 +13,7 @@ export interface GameState {
         prompt: string
         submissions: { [SubmissionId in string]?: { style: string, output: string } }
         submissionEndTime?: number
+        submissionIds?: { [UserId in string]?: string },
         judgmentEndTime?: number
         voteCount: number
     }

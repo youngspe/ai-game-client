@@ -1,5 +1,3 @@
-import { Reactive } from "../utils/reactive";
-import { MainMenuViewModel } from "./MainMenuViewModel";
 import { BaseViewModel } from "./ViewModel";
 
 export class LobbyViewModel extends BaseViewModel {

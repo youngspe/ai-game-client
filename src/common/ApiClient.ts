@@ -8,17 +8,20 @@ export type ApiResult<T = unknown> = { ok: T } | { err: Response }
 export interface ApiClient {
     createGame(): Promise<ApiResult<{ gameId: string }>>
     joinGame(gameId: string): Promise<ApiResult>
+    getEventStream(gameId: string): Promise<ApiResult<EventStream>>
 }
 
 const joinUriPath = (...parts: string[]) => parts.map(encodeURIComponent).join('/')
 
 export class DefaultApiClient implements ApiClient {
-    private readonly _baseUrl: string
+    private readonly _baseUrlHttp: string
+    private readonly _baseUrlWs: string
     private readonly _tokenStore: TokenStore
     private _token: string | null = null
 
-    constructor(baseUrl: string, tokenStore: TokenStore) {
-        this._baseUrl = baseUrl
+    constructor(baseUrlHttp: string, baseUrlWs: string, tokenStore: TokenStore) {
+        this._baseUrlHttp = baseUrlHttp
+        this._baseUrlWs = baseUrlWs
         this._tokenStore = tokenStore
     }
 
@@ -35,6 +38,12 @@ export class DefaultApiClient implements ApiClient {
         return { ok: null }
     }
 
+    async getEventStream(gameId: string): Promise<ApiResult<EventStream>> {
+        const token = await this._initToken()
+        if (typeof token != 'string') return { err: token ?? new Response(null, { status: 401 }) }
+        return { ok: new DefaultEventStream(this._baseUrlWs, gameId, token) }
+    }
+
     private async _fetch(url: string, { headers, ...init }: RequestInit) {
         const newHeaders = new Headers(headers)
         const token = await this._initToken()
@@ -45,7 +54,7 @@ export class DefaultApiClient implements ApiClient {
 
         newHeaders.append('Authorization', `Bearer ${token}`)
 
-        return await fetch(this._baseUrl + url, {
+        return await fetch(this._baseUrlHttp + url, {
             headers: newHeaders,
             ...init
         })
@@ -60,7 +69,7 @@ export class DefaultApiClient implements ApiClient {
             return token
         }
 
-        const res = await fetch(this._baseUrl + 'session', { method: 'POST' })
+        const res = await fetch(this._baseUrlHttp + 'session', { method: 'POST' })
         if (!res.ok) return null
 
         token = (await res.json()).token ?? null
@@ -88,16 +97,21 @@ export class DefaultEventStream implements EventStream {
     private _outBuf: ClientEvent[] = []
     private readonly _gameId: string
     private _closed = false
+    private readonly _token: string
     get closed() { return this._closed }
 
-    constructor(baseUrl: string, gameId: string) {
+    constructor(baseUrl: string, gameId: string, token: string) {
         this._baseUrl = baseUrl
         this._gameId = gameId
+        this._token = token
     }
 
     async init() {
-        while (true) {
-            const ws = new WebSocket(this._baseUrl + joinUriPath('games', this._gameId, 'events'))
+        let retryInterval = 100
+        while (!this._closed) {
+            const ws = new WebSocket(this._baseUrl + joinUriPath('games', this._gameId, 'events') + new URLSearchParams({
+                authToken: this._token,
+            }))
             const success = await new Promise<boolean>(res => {
                 ws.onopen = () => res(true)
                 ws.onerror = ws.onclose = () => res(false)
@@ -124,6 +138,8 @@ export class DefaultEventStream implements EventStream {
                 this._outBuf = []
                 break
             }
+            await new Promise(res => setTimeout(res, retryInterval))
+            retryInterval *= 2
         }
     }
 
@@ -142,5 +158,6 @@ export class DefaultEventStream implements EventStream {
     close() {
         // TODO: handle recv and send when closed == true?
         this._closed = true
+        this._subject.complete()
     }
 }

@@ -2,13 +2,13 @@ import React from 'react'
 import { MyTheme, ThemeProps } from './Theme'
 import { MainMenu } from './components/MainMenu'
 import { Lobby } from './components/Lobby'
-import { AppModel, Device } from './viewModels/AppModel'
-import { useReactive } from './utils/reactive'
+import { AppModel } from './viewModels/AppModel'
+import { useReactive2 } from './utils/Reactive2'
 import { MainMenuViewModel } from './viewModels/MainMenuViewModel'
 import { LobbyViewModel } from './viewModels/LobbyViewModel'
 
 export default function App({ appModel }: { appModel: AppModel }) {
-    let { currentViewModel } = useReactive(appModel.props)
+    let { currentViewModel } = useReactive2(appModel.props)
     let themeProps: ThemeProps<typeof MyTheme> = {
         accent: '#0080FF',
         background: '#101010',
@@ -21,5 +21,3 @@ export default function App({ appModel }: { appModel: AppModel }) {
         {currentViewModel instanceof LobbyViewModel && <Lobby viewModel={currentViewModel} />}
     </MyTheme.Init>
 }
-
-

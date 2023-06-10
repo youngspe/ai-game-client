@@ -1,4 +1,4 @@
-import { Reactive } from "../utils/reactive";
+import { Reactive2 } from "../utils/Reactive2";
 import { ascribe } from "../utils/types";
 import { MainMenuViewModel } from "./MainMenuViewModel";
 import { BaseViewModel, ViewModel } from "./ViewModel";
@@ -23,7 +23,7 @@ export class AppModel implements Navigator {
         navigator: this,
     }
 
-    readonly props = Reactive({
+    readonly props = Reactive2({
         currentViewModel: ascribe<ViewModel>(new MainMenuViewModel(this.deps)),
     })
 
