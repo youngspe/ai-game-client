@@ -6,7 +6,7 @@ import { useEffect, useRef, useState } from "react"
 const _reactive = Symbol()
 
 interface ReactiveContext<T> {
-    obs: Observable<Reactive2.PropertyChange<T>>
+    obs: Observable<Reactive.PropertyChange<T>>
     orig: T
 }
 
@@ -14,17 +14,17 @@ interface ReactiveObject<T> {
     [_reactive]: ReactiveContext<T>
 }
 
-export type Reactive2<T> = T & (
+export type Reactive<T> = T & (
     T extends object ? ReactiveObject<T> : unknown
 )
 
 const reactiveMap = new WeakMap<object, object>()
 
-export function Reactive2<T>(target: T): Reactive2<T> {
-    if (target == null || typeof target != 'object') return target as Reactive2<T>
-    if (Reactive2.isReactive(target)) return target as Reactive2<T>
-    if (reactiveMap.has(target)) return reactiveMap.get(target) as Reactive2<T>
-    const subject = new Subject<Reactive2.PropertyChange<T>>()
+export function Reactive<T>(target: T): Reactive<T> {
+    if (target == null || typeof target != 'object') return target as Reactive<T>
+    if (Reactive.isReactive(target)) return target as Reactive<T>
+    if (reactiveMap.has(target)) return reactiveMap.get(target) as Reactive<T>
+    const subject = new Subject<Reactive.PropertyChange<T>>()
 
     const reactiveContext: ReactiveContext<T> = {
         obs: subject.asObservable(),
@@ -34,7 +34,7 @@ export function Reactive2<T>(target: T): Reactive2<T> {
     const proxy = new Proxy(target, {
         get(target, p, receiver) {
             if (p === _reactive) return reactiveContext
-            return Reactive2(Reflect.get(target, p, receiver))
+            return Reactive(Reflect.get(target, p, receiver))
         },
         set(target, p, newVal, receiver) {
             let prop = p as keyof T
@@ -45,7 +45,7 @@ export function Reactive2<T>(target: T): Reactive2<T> {
             }
             return out
         },
-    }) as Reactive2<T> & object
+    }) as Reactive<T> & object
 
     reactiveMap.set(target, proxy)
 
@@ -62,29 +62,29 @@ type PropPathValue<T, P extends (keyof any)[] | string> =
     : P extends [infer K extends keyof T, ...infer R extends (keyof any)[]] ? PropPathValue<UnionProp<T, K>, R>
     : never
 
-export namespace Reactive2 {
+export namespace Reactive {
     export type PropertyChange<T, P extends keyof T = keyof T> = {
         [K in P]-?: { prop: K, oldVal: T[K], newVal: T[K] }
     }[P]
 
-    export function isReactive<T>(target: T): target is Reactive2<T> {
+    export function isReactive<T>(target: T): target is Reactive<T> {
         if (target == null || typeof target != 'object') return true
         return (target as Partial<ReactiveObject<T>>)[_reactive] != null
     }
 
-    export function updates<T>(target: Reactive2<T>): Observable<PropertyChange<T>> {
+    export function updates<T>(target: Reactive<T>): Observable<PropertyChange<T>> {
         if (target == null || typeof target != 'object') return NEVER
-        return (target as Reactive2<T & object>)[_reactive].obs
+        return (target as Reactive<T & object>)[_reactive].obs
     }
 
-    export function original<T>(target: Reactive2<T>): T {
+    export function original<T>(target: Reactive<T>): T {
         if (target == null || typeof target != 'object') return target
-        return (target as Reactive2<typeof target>)[_reactive].orig as T
+        return (target as Reactive<typeof target>)[_reactive].orig as T
     }
 
     export function prop<T, P extends (keyof any)[]>(
-        target: Reactive2<T>, ...keys: P
-    ): StateObservable<Reactive2<PropPathValue<T, P extends [infer S extends string] ? S : P>>> {
+        target: Reactive<T>, ...keys: P
+    ): StateObservable<Reactive<PropPathValue<T, P extends [infer S extends string] ? S : P>>> {
         if (keys.length == 0) {
             const out = of(target)
             addProp(out, 'value', { value: target })
@@ -92,9 +92,9 @@ export namespace Reactive2 {
         }
         let path: (keyof any)[] = (keys.length == 1 && typeof keys[0] == 'string') ? keys[0].split('.') : keys
 
-        function inner1<T1, K extends keyof T1>(target: Reactive2<T1>, key: K): StateObservable<Reactive2<T1[K]>> {
-            return new class extends Observable<Reactive2<any>> {
-                get value() { return target?.[key] as Reactive2<T1[K]> }
+        function inner1<T1, K extends keyof T1>(target: Reactive<T1>, key: K): StateObservable<Reactive<T1[K]>> {
+            return new class extends Observable<Reactive<any>> {
+                get value() { return target?.[key] as Reactive<T1[K]> }
 
                 constructor() {
                     super(s => {
@@ -107,12 +107,12 @@ export namespace Reactive2 {
             }()
         }
 
-        function inner2<T1, P1 extends (keyof any)[]>(target: Reactive2<T1>, [key, ...rest]: P1): StateObservable<Reactive2<any>> {
+        function inner2<T1, P1 extends (keyof any)[]>(target: Reactive<T1>, [key, ...rest]: P1): StateObservable<Reactive<any>> {
             const child = inner1(target, key as keyof T1)
             if (rest.length == 0) return child
 
-            const out = child.pipe(switchMap((x: Reactive2<any>) => inner2(x, rest)), distinctUntilChanged())
-            addProp(out, 'value', { get: () => rest.reduce((prev: any, prop) => prev?.[prop], child.value) as Reactive2<any> })
+            const out = child.pipe(switchMap((x: Reactive<any>) => inner2(x, rest)), distinctUntilChanged())
+            addProp(out, 'value', { get: () => rest.reduce((prev: any, prop) => prev?.[prop], child.value) as Reactive<any> })
             return out
         }
 
@@ -120,7 +120,7 @@ export namespace Reactive2 {
     }
 }
 
-export function useReactive2<T>(target: Reactive2<T>): T {
+export function useReactive<T>(target: Reactive<T>): T {
     const [_state, setState] = useState(false)
     type Entry = { [_ in string | symbol]?: { subbed: boolean, entry: Entry } }
     const subbed = useRef<Entry>({}).current
@@ -144,7 +144,7 @@ export function useReactive2<T>(target: Reactive2<T>): T {
                 if (!propEntry.subbed && propValue == null || typeof propValue != 'object') {
                     propEntry.subbed = true
                     let first: [unknown] | null = [propValue]
-                    sub.current?.add(Reactive2.prop(target, ...propPath).subscribe(x => {
+                    sub.current?.add(Reactive.prop(target, ...propPath).subscribe(x => {
                         if (first != null && x !== first[0]) {
                             first = null
                             onUpdate()

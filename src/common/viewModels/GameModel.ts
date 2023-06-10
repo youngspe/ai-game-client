@@ -1,12 +1,12 @@
 import { GameState, PlayerState } from '../../proto/GameState';
 import { EventStream } from '../ApiClient';
-import { Reactive2 } from '../utils/Reactive2';
+import { Reactive } from '../utils/Reactive';
 
 export class GameModel {
-    readonly props: Reactive2<{
+    readonly props: Reactive<{
         gameState?: GameState
         playerState?: PlayerState
-    }> = Reactive2({})
+    }> = Reactive({})
 
     private readonly _stream: EventStream;
 

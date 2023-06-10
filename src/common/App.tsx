@@ -3,12 +3,12 @@ import { MyTheme, ThemeProps } from './Theme'
 import { MainMenu } from './components/MainMenu'
 import { Lobby } from './components/Lobby'
 import { AppModel } from './viewModels/AppModel'
-import { useReactive2 } from './utils/Reactive2'
+import { useReactive } from './utils/Reactive'
 import { MainMenuViewModel } from './viewModels/MainMenuViewModel'
 import { LobbyViewModel } from './viewModels/LobbyViewModel'
 
 export default function App({ appModel }: { appModel: AppModel }) {
-    let { currentViewModel } = useReactive2(appModel.props)
+    let { currentViewModel } = useReactive(appModel.props)
     let themeProps: ThemeProps<typeof MyTheme> = {
         accent: '#0080FF',
         background: '#101010',
