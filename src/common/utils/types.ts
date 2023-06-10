@@ -46,18 +46,19 @@ type IsSingleLiteral<T> = And<[IsSingleType<T>, IsLiteral<T>]>
 //     | ('asdf' extends infer K ? (('asdf' | 'qwer') extends K ? K : never) : never)
 //     | ('qwer' extends infer K ? (('asdf' | 'qwer') extends K ? K : never) : never)
 
+type Allowed<T, K> =
+    K extends keyof T ? [never]
+    : IsSingleLiteral<K> extends true ? []
+    : [never]
+
 export function addProp<
     T extends object,
     K extends keyof any,
-    V extends (
-        K extends keyof T ? never
-        : IsSingleLiteral<K> extends true ? unknown
-        : never
-    ),
-    P extends { value: V } | { get: () => V, set?: (value: V) => void }
->(target: T, key: K, value: P): asserts target is T & (
-    P extends { value: V } | { get: {}, set: {} } ? { [_ in K]: V }
-    : { readonly [_ in K]: V }
+    P extends { readonly value: unknown } | { readonly get: () => any, readonly set?: (value: any) => void }
+>(target: T, key: K, value: P, ..._: Allowed<T, K>): asserts target is T & (
+    P extends { readonly value: infer V } | { readonly get: () => infer V, set: (value: infer V) => void } ? { [_ in K]: V }
+    : P extends { readonly get: () => infer V } ? { readonly [_ in K]: V }
+    : never
 ) {
     if ('get' in value) {
         Object.defineProperty(target, key, value)

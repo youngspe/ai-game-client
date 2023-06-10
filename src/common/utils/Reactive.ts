@@ -1,4 +1,4 @@
-import { NEVER, Observable, Subject, Subscription, distinctUntilChanged, filter, of, skip, switchMap } from "rxjs"
+import { NEVER, Observable, Subject, Subscription, combineLatest, distinctUntilChanged, filter, of, skip, switchMap } from "rxjs"
 import { StateObservable } from "./rxUtils"
 import { addProp } from "./types"
 import { useEffect, useRef, useState } from "react"
@@ -62,9 +62,10 @@ export function Reactive<T>(target: T): Reactive<T> {
     return proxy
 }
 
+type UnionKeys<T> = T extends any ? keyof T : never
 type UnionProp<T, K> = T extends any ? (K extends keyof T ? T[K] : undefined) : never
 
-type PropPathValue<T, P extends (keyof any)[] | string> =
+type PropPathValue<T, P extends readonly (keyof any)[] | string> =
     P extends [] ? T
     : P extends `${infer K}.${infer R}` ? PropPathValue<UnionProp<T, K>, R>
     : P extends string ? UnionProp<T, P>
@@ -92,7 +93,7 @@ export namespace Reactive {
         return (target as Reactive<typeof target>)[_reactive].orig as T
     }
 
-    export function prop<T, P extends (keyof any)[]>(
+    export function prop<T, P extends readonly (keyof any)[]>(
         target: Reactive<T>, ...keys: P
     ): StateObservable<Reactive<PropPathValue<T, P extends [infer S extends string] ? S : P>>> {
         if (keys.length == 0) {
@@ -100,7 +101,7 @@ export namespace Reactive {
             addProp(out, 'value', { value: target })
             return out as any
         }
-        let path: (keyof any)[] = (keys.length == 1 && typeof keys[0] == 'string') ? keys[0].split('.') : keys
+        let path: readonly (keyof any)[] = (keys.length == 1 && typeof keys[0] == 'string') ? keys[0].split('.') : keys
 
         function inner1<T1, K extends keyof T1>(target: Reactive<T1>, key: K): StateObservable<Reactive<T1[K]>> {
             return new class extends Observable<Reactive<any>> {
@@ -117,7 +118,7 @@ export namespace Reactive {
             }()
         }
 
-        function inner2<T1, P1 extends (keyof any)[]>(target: Reactive<T1>, [key, ...rest]: P1): StateObservable<Reactive<any>> {
+        function inner2<T1, P1 extends readonly (keyof any)[]>(target: Reactive<T1>, [key, ...rest]: P1): StateObservable<Reactive<any>> {
             const child = inner1(target, key as keyof T1)
             if (rest.length == 0) return child
 
@@ -128,12 +129,28 @@ export namespace Reactive {
 
         return inner2(target, path)
     }
+
+    type PropPathValues<T, P extends readonly (readonly (keyof any)[] | string)[]> = {
+        [K in keyof P]: PropPathValue<T, P[K]>
+    }
+
+    export function props<T, U, A extends readonly (readonly (keyof any)[] | string)[]>(
+        target: Reactive<T>,
+        keyPaths: A,
+        combine: (...args: PropPathValues<T, A>) => U,
+    ): StateObservable<U> {
+        let observables: StateObservable<any>[] = keyPaths.map(p => Reactive.prop(target, ...((typeof p == 'string') ? [p] : p)))
+        const obs = combineLatest(observables, combine as (...args: any[]) => U).pipe(distinctUntilChanged())
+        addProp(obs, 'value', { get: () => combine(...observables.map(o => o.value) as any) })
+        return obs
+    }
 }
 
 const _useReactive = Symbol()
 
-export function useReactive<T>(target: Reactive<T>): T {
-    target = Reactive(target)
+export function useReactive<T>(target: T): T extends object ? T : { [_ in string]?: undefined } {
+    if (target == null) return {} as any
+    const rTarget = Reactive(target)
     const [_state, setState] = useState({})
     type Entry = { [_ in string | symbol]?: Entry }
     const subbed = useRef<Entry>({}).current
@@ -148,7 +165,7 @@ export function useReactive<T>(target: Reactive<T>): T {
         function subscribeProps(subbed: Entry, path: (keyof any)[]) {
             for (let prop in subbed) {
                 const newPath = [...path, prop]
-                sub.add(Reactive.prop(target, ...newPath).pipe(skip(1)).subscribe(onUpdate))
+                sub.add(Reactive.prop(rTarget, ...newPath).pipe(skip(1)).subscribe(onUpdate))
                 subscribeProps(subbed[prop]!, newPath)
             }
         }
@@ -157,11 +174,11 @@ export function useReactive<T>(target: Reactive<T>): T {
         return () => {
             sub.unsubscribe()
         }
-    }, [target])
+    }, [rTarget])
 
 
     if (proxies.current == null) {
-        return Reactive.original(target)
+        return Reactive.original(rTarget) as any
     }
 
     function getProxy<U>(obj: U, entry: Entry): U {
@@ -185,5 +202,5 @@ export function useReactive<T>(target: Reactive<T>): T {
         return proxy
     }
 
-    return getProxy(Reactive.original(target), subbed)
+    return getProxy(Reactive.original(rTarget), subbed) as any
 }

@@ -1,22 +1,49 @@
+import { BehaviorSubject, Subscription, combineLatest, distinctUntilChanged, map, noop, zip } from 'rxjs';
 import { GameState, PlayerState } from '../../proto/GameState';
 import { EventStream } from '../ApiClient';
 import { Reactive } from '../utils/Reactive';
+import { BaseViewModel, ViewModel } from './ViewModel';
+import { LobbyViewModel } from './LobbyViewModel';
 
-export class GameModel {
+export class GameModel extends BaseViewModel {
     readonly props: Reactive<{
         gameState?: GameState
         playerState?: PlayerState
     }> = Reactive({})
 
+    readonly childViewModel = new BehaviorSubject<ViewModel | null>(null)
+
     private readonly _stream: EventStream;
 
-    constructor(stream: EventStream) {
+    constructor(deps: BaseViewModel.Deps, stream: EventStream) {
+        super(deps)
         this._stream = stream
     }
 
-    async loop(): Promise<void> {
+
+    protected override onAttach(sub: Subscription): void {
+        Reactive.prop(this.props, 'gameState.round').value
+        sub.add(this._updateViewModel())
+        sub.add(this._loop())
+    }
+
+    private _updateViewModel() {
+        const getLobby = () => this.initViewModel(LobbyViewModel, { state: this.props })
+
+        return Reactive.props(this.props, [
+            'gameState.started',
+            'gameState.round',
+            'gameState.round.judgmentEndTime',
+        ] as const, (started, round, judgmentEndTime) => {
+            if (!started) return getLobby
+
+            return null
+        }).subscribe(f => f == null ? null : this.childViewModel.next(f()))
+    }
+
+    private _loop() {
         const props = this.props
-        for await (let e of this._stream.recv()) {
+        return this._stream.recv().subscribe(e => {
             try {
                 switch (e.event) {
                     case 'reloadState': {
@@ -25,7 +52,7 @@ export class GameModel {
                     } break
                     case 'addPlayer': {
                         const { player } = e
-                        props.gameState!.playerList.push(player)
+                        props.gameState!.playerList = [...props.gameState!.playerList, player]
                     } break
                     case 'beginGame': {
                         props.gameState!.started = true
@@ -75,6 +102,6 @@ export class GameModel {
             } catch (ex) {
                 console.error(ex)
             }
-        }
+        })
     }
 }

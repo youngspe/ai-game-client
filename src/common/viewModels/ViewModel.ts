@@ -2,6 +2,7 @@ import { Subscription, SubscriptionLike } from 'rxjs';
 import { Closeable, useCloseable } from '../utils/Closeable';
 import { Navigator } from '../utils/navigator';
 import { useEffect } from 'react';
+import { ApiClient } from '../ApiClient';
 
 export interface ViewModel {
     readonly navBehavior: ViewModel.NavBehavior
@@ -81,6 +82,7 @@ export abstract class BaseViewModel<Deps extends BaseViewModel.Deps = BaseViewMo
 export namespace BaseViewModel {
     export interface Deps {
         navigator: Navigator,
+        apiClient: ApiClient,
     }
 }
 

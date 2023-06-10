@@ -1,4 +1,4 @@
-import { GameState, PlayerState } from "./GameState"
+import { GameState, PlayerInfo, PlayerState } from "./GameState"
 
 export type Event<Name extends string = string, Values = unknown> = {
     event: Name,
@@ -6,7 +6,7 @@ export type Event<Name extends string = string, Values = unknown> = {
 
 export type ServerEvent = Event & (
     | { event: 'reloadState', gameState: GameState, playerState: PlayerState }
-    | { event: 'addPlayer', player: { userId: string, displayName: string } }
+    | { event: 'addPlayer', player: PlayerInfo }
     | { event: 'beginGame', }
     | { event: 'beginRound', round: number, prompt: string, styleSuggestions: string[], submissionEndTime: number, voteCount: number }
     | { event: 'endSubmissions' }

@@ -26,7 +26,7 @@ const device: Device = {
         },
     },
     baseUrlHttp: `${location.protocol}//${location.host}/api/`,
-    baseUrlWs: `${location.protocol == 'https:' ? 'wss:' : 'ws:'}//${location.host}/api`,
+    baseUrlWs: `${location.protocol == 'https:' ? 'wss:' : 'ws:'}//${location.host}/api/`,
 }
 
 console.log(device)

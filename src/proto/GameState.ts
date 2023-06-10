@@ -1,6 +1,9 @@
 
+export interface PlayerInfo { userId: string; displayName: string; }
+
 export interface GameState {
-    playerList: { userId: string; displayName: string; }[]
+    gameId: string
+    playerList: PlayerInfo[]
     ownerId: string;
     started: boolean,
 
@@ -20,6 +23,7 @@ export interface GameState {
 }
 
 export interface PlayerState {
+    userId: string
     displayName: string
     styleSuggestions?: string[]
     submission?: {

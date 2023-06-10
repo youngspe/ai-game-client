@@ -1,10 +1,24 @@
+import { GameState, PlayerInfo, PlayerState } from "../../proto/GameState";
+import { Reactive } from "../utils/Reactive";
+import { StateObservable } from "../utils/rxUtils";
 import { BaseViewModel } from "./ViewModel";
 
 export class LobbyViewModel extends BaseViewModel {
-    readonly joinCode?: string
-    constructor(deps: BaseViewModel.Deps, { joinCode }: { joinCode?: string }) {
+    readonly args: LobbyViewModel.Args
+
+    constructor(deps: BaseViewModel.Deps, props: LobbyViewModel.Args) {
         super(deps)
-        this.joinCode = joinCode
+        this.args = props
     }
     cancel() { this.goBack() }
+}
+
+export namespace LobbyViewModel {
+    export interface Args {
+
+        state: Reactive<{
+            gameState?: GameState
+            playerState?: PlayerState
+        }>
+    }
 }

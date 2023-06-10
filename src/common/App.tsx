@@ -5,7 +5,8 @@ import { Lobby } from './components/Lobby'
 import { AppModel } from './viewModels/AppModel'
 import { useReactive } from './utils/Reactive'
 import { MainMenuViewModel } from './viewModels/MainMenuViewModel'
-import { LobbyViewModel } from './viewModels/LobbyViewModel'
+import { GameModel } from './viewModels/GameModel'
+import { GameContainer } from './components/GameContainer'
 
 export default function App({ appModel }: { appModel: AppModel }) {
     let { currentViewModel } = useReactive(appModel.props)
@@ -18,6 +19,6 @@ export default function App({ appModel }: { appModel: AppModel }) {
 
     return <MyTheme.Init {...themeProps}>
         {currentViewModel instanceof MainMenuViewModel && <MainMenu viewModel={currentViewModel} />}
-        {currentViewModel instanceof LobbyViewModel && <Lobby viewModel={currentViewModel} />}
+        {currentViewModel instanceof GameModel && <GameContainer viewModel={currentViewModel} />}
     </MyTheme.Init>
 }

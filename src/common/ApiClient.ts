@@ -1,4 +1,4 @@
-import { Subject } from "rxjs"
+import { Observable, Subject, concat, of } from "rxjs"
 import { ClientEvent, ServerEvent } from "../proto/Event"
 import { TokenStore } from "./TokenStore"
 import { asyncValues } from "./utils/rxUtils"
@@ -7,7 +7,7 @@ export type ApiResult<T = unknown> = { ok: T } | { err: Response }
 
 export interface ApiClient {
     createGame(): Promise<ApiResult<{ gameId: string }>>
-    joinGame(gameId: string): Promise<ApiResult>
+    joinGame(gameId: string, displayName: string): Promise<ApiResult>
     getEventStream(gameId: string): Promise<ApiResult<EventStream>>
 }
 
@@ -32,8 +32,11 @@ export class DefaultApiClient implements ApiClient {
         return { ok: { gameId } }
     }
 
-    async joinGame(gameId: string): Promise<ApiResult> {
-        const res = await this._fetch(joinUriPath('games', gameId, 'players'), { method: 'POST' })
+    async joinGame(gameId: string, displayName: string): Promise<ApiResult> {
+        const res = await this._fetch(
+            joinUriPath('games', gameId, 'players') + '?' + new URLSearchParams({ displayName }),
+            { method: 'POST' },
+        )
         if (!res.ok) return { err: res }
         return { ok: null }
     }
@@ -41,7 +44,9 @@ export class DefaultApiClient implements ApiClient {
     async getEventStream(gameId: string): Promise<ApiResult<EventStream>> {
         const token = await this._initToken()
         if (typeof token != 'string') return { err: token ?? new Response(null, { status: 401 }) }
-        return { ok: new DefaultEventStream(this._baseUrlWs, gameId, token) }
+        const stream = new DefaultEventStream(this._baseUrlWs, gameId, token)
+        await stream.init()
+        return { ok: stream }
     }
 
     private async _fetch(url: string, { headers, ...init }: RequestInit) {
@@ -86,15 +91,16 @@ export class DefaultApiClient implements ApiClient {
 
 export interface EventStream {
     send(...events: ClientEvent[]): void
-    recv(): AsyncIterableIterator<ServerEvent>
+    recv(): Observable<ServerEvent>
     close(): void
 }
 
 export class DefaultEventStream implements EventStream {
     private _ws: WebSocket | null = null
-    private _subject = new Subject<ServerEvent>
+    private _subject?: Subject<ServerEvent>
     private readonly _baseUrl: string
     private _outBuf: ClientEvent[] = []
+    private _inBuf: ServerEvent[] = []
     private readonly _gameId: string
     private _closed = false
     private readonly _token: string
@@ -109,7 +115,7 @@ export class DefaultEventStream implements EventStream {
     async init() {
         let retryInterval = 100
         while (!this._closed) {
-            const ws = new WebSocket(this._baseUrl + joinUriPath('games', this._gameId, 'events') + new URLSearchParams({
+            const ws = new WebSocket(this._baseUrl + joinUriPath('games', this._gameId, 'events') + '?' + new URLSearchParams({
                 authToken: this._token,
             }))
             const success = await new Promise<boolean>(res => {
@@ -132,9 +138,17 @@ export class DefaultEventStream implements EventStream {
                 this._ws = ws
                 ws.onmessage = e => {
                     const events: ServerEvent[] = JSON.parse(e.data)
-                    events.forEach(x => this._subject.next(x))
+                    events.forEach(e => {
+                        if (this._subject) {
+                            this._subject.next(e)
+                        } else {
+                            this._inBuf.push(e)
+                        }
+                    })
                 }
-                ws.send(JSON.stringify(this._outBuf))
+                if (this._outBuf.length > 0) {
+                    ws.send(JSON.stringify(this._outBuf))
+                }
                 this._outBuf = []
                 break
             }
@@ -152,12 +166,18 @@ export class DefaultEventStream implements EventStream {
     }
 
     recv() {
-        return asyncValues(this._subject)
+        this._subject = new Subject()
+        const inBuf = this._inBuf
+        this._inBuf = []
+        return concat(
+            of(...inBuf),
+            this._subject.asObservable(),
+        )
     }
 
     close() {
         // TODO: handle recv and send when closed == true?
         this._closed = true
-        this._subject.complete()
+        this._subject?.complete()
     }
 }

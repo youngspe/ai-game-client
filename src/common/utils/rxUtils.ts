@@ -2,10 +2,12 @@ import { useEffect, useRef } from 'react'
 import { useObservable } from 'rxjs-hooks'
 import { BehaviorSubject, NEVER, Observable, OperatorFunction, filter, map, mergeMap, of, switchMap } from 'rxjs'
 
-export type StateObservable<T> = Observable<T> & { readonly value: T }
+export interface StateObservable<T> extends Observable<T> {
+    readonly value: T
+}
 
 export function useStateObservable<T>(obs: StateObservable<T>) {
-    useObservable((_state, input) => input.pipe(switchMap(([obs]) => obs)), obs.value, [obs])
+    return useObservable((_state, input) => input.pipe(switchMap(([obs]) => obs)), obs.value, [obs])
 }
 
 export function useSubscribe<E>(f: (event: E) => void, obs: Observable<E>) {

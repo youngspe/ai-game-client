@@ -7,16 +7,22 @@ import { useAttachViewModel } from '../viewModels/ViewModel';
 
 export function MainMenu({ viewModel }: { viewModel: MainMenuViewModel }) {
     const [joinCode, setJoinCode] = useState('')
+    const [displayName, setDisplayName] = useState('')
 
     useAttachViewModel(viewModel)
     return <Page>
         <H1>[untitled game]</H1>
         <Rows>
             <Text style={{ flexGrow: 0.25 }}>Enter your display name:</Text>
-            <TextInput placeholder='Type your name here' style={{ flexGrow: 1 }} />
+            <TextInput
+                value={displayName}
+                onChange={({ nativeEvent: { text } }) => setDisplayName(text)}
+                placeholder='Type your name here'
+                style={{ flexGrow: 1 }}
+            />
         </Rows>
         <Hr />
-        <Row><Button onPress={() => viewModel.start()}>Start a new game</Button></Row>
+        <Row><Button onPress={() => viewModel.start(displayName)}>Start a new game</Button></Row>
         <Hr />
         <Rows>
             <Text>Or join an existing game:</Text>
@@ -26,7 +32,12 @@ export function MainMenu({ viewModel }: { viewModel: MainMenuViewModel }) {
                 placeholder='Enter join code'
                 style={{ flexGrow: 1 }}
             />
-            <Button style={{ flexGrow: 1, alignSelf: 'stretch' }} onPress={() => viewModel.join(joinCode)}>Join</Button>
+            <Button
+                style={{ flexGrow: 1, alignSelf: 'stretch' }}
+                onPress={() => viewModel.join(joinCode, displayName)}
+            >
+                Join
+            </Button>
         </Rows>
     </Page>
 }

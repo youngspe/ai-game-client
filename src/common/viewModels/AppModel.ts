@@ -4,6 +4,7 @@ import { MainMenuViewModel } from "./MainMenuViewModel";
 import { BaseViewModel, ViewModel } from "./ViewModel";
 import { Navigator } from "../utils/navigator";
 import { TokenStore } from "../TokenStore";
+import { DefaultApiClient } from "../ApiClient";
 
 export interface Device {
     window?: {
@@ -13,19 +14,15 @@ export interface Device {
         exit(): void
         onBackListener?: () => void
     }
-    tokenStore?: TokenStore
+    tokenStore: TokenStore
     baseUrlHttp: string,
     baseUrlWs: string,
 }
 
 export class AppModel implements Navigator {
-    readonly deps: BaseViewModel.Deps = {
-        navigator: this,
-    }
+    readonly deps: BaseViewModel.Deps
 
-    readonly props = Reactive({
-        currentViewModel: ascribe<ViewModel>(new MainMenuViewModel(this.deps)),
-    })
+    readonly props: Reactive<{ currentViewModel: ViewModel }>
 
     readonly device: Device
 
@@ -36,6 +33,13 @@ export class AppModel implements Navigator {
         if (device.history) {
             device.history.onBackListener = () => this.back()
         }
+        this.deps = {
+            navigator: this,
+            apiClient: new DefaultApiClient(device.baseUrlHttp, device.baseUrlWs, device.tokenStore)
+        }
+        this.props = Reactive({
+            currentViewModel: ascribe<ViewModel>(new MainMenuViewModel(this.deps)),
+        })
     }
 
     open(vm: ViewModel): void {
