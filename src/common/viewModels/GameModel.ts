@@ -4,6 +4,7 @@ import { EventStream } from '../ApiClient';
 import { Reactive } from '../utils/Reactive';
 import { BaseViewModel, ViewModel } from './ViewModel';
 import { LobbyViewModel } from './LobbyViewModel';
+import { SubmissionViewModel } from './SubmissionViewModel';
 
 export class GameModel extends BaseViewModel {
     readonly props: Reactive<{
@@ -28,7 +29,8 @@ export class GameModel extends BaseViewModel {
     }
 
     private _updateViewModel() {
-        const getLobby = () => this.initViewModel(LobbyViewModel, { state: this.props })
+        const getLobby = () => this.initViewModel(LobbyViewModel, { state: this.props, stream: this._stream })
+        const getSubmission = () => this.initViewModel(SubmissionViewModel, { state: this.props, stream: this._stream })
 
         return Reactive.props(this.props, [
             'gameState.started',
@@ -36,6 +38,8 @@ export class GameModel extends BaseViewModel {
             'gameState.round.judgmentEndTime',
         ] as const, (started, round, judgmentEndTime) => {
             if (!started) return getLobby
+            if (round == null) return null // TODO: endgame
+            if (judgmentEndTime == null) return getSubmission
 
             return null
         }).subscribe(f => f == null ? null : this.childViewModel.next(f()))

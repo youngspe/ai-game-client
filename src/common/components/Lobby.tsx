@@ -5,16 +5,15 @@ import { ScrollView } from 'react-native';
 import { Page } from './widgets/Page';
 import { LobbyViewModel } from '../viewModels/LobbyViewModel';
 import { useAttachViewModel } from '../viewModels/ViewModel';
-import { Reactive, useReactive } from '../utils/Reactive';
-import { useStateObservable } from '../utils/rxUtils';
+import { useReactiveProp } from '../utils/Reactive';
 
 export function Lobby({ viewModel }: { viewModel: LobbyViewModel }) {
     useAttachViewModel(viewModel)
     const state = viewModel.args.state
-    const userId = useStateObservable(Reactive.prop(state, 'playerState.userId'))
-    const ownerId = useStateObservable(Reactive.prop(state, 'gameState.ownerId'))
-    const gameId = useStateObservable(Reactive.prop(state, 'gameState.gameId'))
-    const playerList = useStateObservable(Reactive.prop(state, 'gameState.playerList'))
+    const userId = useReactiveProp(state, 'playerState.userId')
+    const ownerId = useReactiveProp(state, 'gameState.ownerId')
+    const gameId = useReactiveProp(state, 'gameState.gameId')
+    const playerList = useReactiveProp(state, 'gameState.playerList')
     const isCreator = userId === ownerId
 
     return <Page>
@@ -34,7 +33,7 @@ export function Lobby({ viewModel }: { viewModel: LobbyViewModel }) {
         }
         <Rows style={{ flexWrap: 'wrap-reverse' }}>
             <Button onPress={() => viewModel.cancel()}>Cancel</Button>
-            {isCreator && <Button>Start Game</Button>}
+            {isCreator && <Button onPress={() => viewModel.start()}>Start Game</Button>}
         </Rows>
     </Page>
 }

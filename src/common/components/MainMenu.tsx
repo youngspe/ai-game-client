@@ -16,7 +16,7 @@ export function MainMenu({ viewModel }: { viewModel: MainMenuViewModel }) {
             <Text style={{ flexGrow: 0.25 }}>Enter your display name:</Text>
             <TextInput
                 value={displayName}
-                onChange={({ nativeEvent: { text } }) => setDisplayName(text)}
+                onChangeText={setDisplayName}
                 placeholder='Type your name here'
                 style={{ flexGrow: 1 }}
             />
@@ -28,7 +28,7 @@ export function MainMenu({ viewModel }: { viewModel: MainMenuViewModel }) {
             <Text>Or join an existing game:</Text>
             <TextInput
                 value={joinCode}
-                onChange={({ nativeEvent: { text } }) => setJoinCode(text)}
+                onChangeText={setJoinCode}
                 placeholder='Enter join code'
                 style={{ flexGrow: 1 }}
             />

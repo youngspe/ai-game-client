@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useObservable } from 'rxjs-hooks'
 import { BehaviorSubject, NEVER, Observable, OperatorFunction, filter, map, mergeMap, of, switchMap } from 'rxjs'
 
@@ -87,4 +87,41 @@ export function asyncValues<T>(obs: Observable<T>): AsyncIterableIterator<T> {
             sub.unsubscribe()
         }
     })()
+}
+
+export interface StateRef<T> {
+    value: T
+}
+
+export function useStateRef<T>(init: T | (() => T)): StateRef<T> {
+    const [state, setState] = useState<any>(init)
+    return {
+        get value() { return state },
+        set value(value) { setState(value) },
+    }
+}
+
+export function useCountdownSeconds(endTime: Date) {
+    const now = Date.now()
+    const [time, setTime] = useState(Math.ceil((endTime.getTime() - now) / 1000))
+
+    useEffect(() => {
+        const dif = endTime.getTime() - now
+
+        type Timeout = ReturnType<typeof setTimeout>
+        let interval: Timeout | null
+        let timeout: Timeout | null = setTimeout(() => {
+            timeout = null
+            setTime(Math.ceil((endTime.getTime() - Date.now()) / 1000))
+            interval = setInterval(() => {
+                setTime(Math.ceil((endTime.getTime() - Date.now()) / 1000))
+            }, 1000)
+        }, dif % 1000)
+        return () => {
+            if (timeout != null) { clearTimeout(timeout) }
+            if (interval != null) { clearTimeout(interval) }
+        }
+    }, [endTime.getTime()])
+
+    return time
 }

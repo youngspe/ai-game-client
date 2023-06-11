@@ -54,7 +54,8 @@ export const MyTheme = createTheme(({ accent, background, foreground }: { accent
         }
 
         return {
-            button: ({ pressed }: PressableStateCallbackType) => style<ViewStyle>()({
+            button: ({ pressed, enabled }: { pressed: boolean, enabled: boolean }) => style<ViewStyle>()({
+                opacity: enabled ? 1.0 : 0.5,
                 backgroundColor: pressed ? background : accent,
                 borderWidth: 1,
                 borderColor: foreground,

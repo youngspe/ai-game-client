@@ -104,6 +104,7 @@ export class DefaultEventStream implements EventStream {
     private readonly _gameId: string
     private _closed = false
     private readonly _token: string
+    private _retryInterval = 100
     get closed() { return this._closed }
 
     constructor(baseUrl: string, gameId: string, token: string) {
@@ -113,7 +114,6 @@ export class DefaultEventStream implements EventStream {
     }
 
     async init() {
-        let retryInterval = 100
         while (!this._closed) {
             const ws = new WebSocket(this._baseUrl + joinUriPath('games', this._gameId, 'events') + '?' + new URLSearchParams({
                 authToken: this._token,
@@ -127,10 +127,12 @@ export class DefaultEventStream implements EventStream {
             ws.onclose = null
 
             if (success) {
-                ws.onclose = () => {
+                ws.onclose = async () => {
                     ws.onclose = null
                     ws.onmessage = null
                     this._ws = null
+
+                    await new Promise(res => setTimeout(res, this._retryInterval))
                     if (!this._closed) {
                         this.init()
                     }
@@ -152,13 +154,15 @@ export class DefaultEventStream implements EventStream {
                 this._outBuf = []
                 break
             }
-            await new Promise(res => setTimeout(res, retryInterval))
-            retryInterval *= 2
+            await new Promise(res => setTimeout(res, this._retryInterval))
+            this._retryInterval *= 2
         }
+
+        this._retryInterval = Math.max(Math.min(this._retryInterval * 0.75, 10_000), 100)
     }
 
     send(...events: ClientEvent[]) {
-        if (this._ws == null || this._ws.readyState <= WebSocket.OPEN) {
+        if (this._ws == null || this._ws.readyState < WebSocket.OPEN) {
             this._outBuf.push(...events)
         } else {
             this._ws.send(JSON.stringify(events))

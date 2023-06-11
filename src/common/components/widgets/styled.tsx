@@ -1,24 +1,67 @@
-import React, { PropsWithChildren } from 'react'
+import React, { PropsWithChildren, useCallback, useState } from 'react'
 import * as Rn from 'react-native'
 import { MyTheme, useTheme } from '../../Theme'
 import { fade } from '../../utils/color'
 import { FlexItemStyle, MarginStyle } from '../../utils/styles'
+import { StateRef, useStateRef } from '../../utils/rxUtils'
+import { addProp } from '../../utils/types'
 
 export function Button(
-    { onPress, children, style, textStyle, ...props }: PropsWithChildren<Rn.PressableProps & { textStyle?: Rn.TextStyle }>,
+    { onPress, children, style, textStyle, disabled, ...props }: Button.Props,
 ) {
+    const enabled = !disabled
     const { button, buttonText } = useTheme(MyTheme)
+    const themeStyle = useCallback(
+        (state: Rn.PressableStateCallbackType) => [
+            button({ pressed: state.pressed, enabled }),
+            typeof style == 'function' ? style(state) : style,
+        ],
+        [enabled, style],
+    )
+
     return <Rn.Pressable
         onPress={onPress}
         role='button'
-        style={state => [
-            button(state),
-            typeof style == 'function' ? style(state) : style,
-        ]}
+        style={themeStyle}
         {...props}
     >
         <Text style={[buttonText, textStyle]}>{children}</Text>
     </Rn.Pressable>
+}
+
+export namespace Button {
+    export interface Props extends PropsWithChildren<Rn.PressableProps> {
+        textStyle?: Rn.TextStyle
+    }
+}
+
+export function RadioButton<T = unknown>({ value, state, children, disabled, ...props }: RadioButton.Props<T>) {
+    return <Button
+        disabled={disabled || state.value === value}
+        onPress={() => state.value = value}
+        {...props}
+    >{children}</Button>
+}
+
+export namespace RadioButton {
+    export interface Props<T> extends Omit<Button.Props, 'onPress'> {
+        value: T
+        state: StateRef<T>
+    }
+}
+
+export interface RadioState<T = unknown> {
+    RadioButton(props: Omit<RadioButton.Props<T>, 'state'>): JSX.Element
+    value: T | undefined
+}
+
+export function useRadioState<T>({ init, onSelect }: {
+    init?: T | (() => T),
+    onSelect?: (value: T) => void,
+} = {}): RadioState<T> {
+    const state = useStateRef(init)
+    addProp(state, 'RadioButton', { value: (props: Omit<RadioButton.Props<T>, 'state'>) => RadioButton({ state, ...props }) })
+    return state
 }
 
 export function Text({ style, children, ...props }: Rn.TextProps) {

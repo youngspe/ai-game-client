@@ -10,7 +10,7 @@ export type ServerEvent = Event & (
     | { event: 'beginGame', }
     | { event: 'beginRound', round: number, prompt: string, styleSuggestions: string[], submissionEndTime: number, voteCount: number }
     | { event: 'endSubmissions' }
-    | { event: 'generateSubmission', output: string, id: string }
+    | { event: 'generateSubmission', output: string, id: string, style: string }
     | {
         event: 'beginJudgment'
         round: number

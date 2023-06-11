@@ -1,5 +1,5 @@
 import { NEVER, Observable, Subject, Subscription, combineLatest, distinctUntilChanged, filter, of, skip, switchMap } from "rxjs"
-import { StateObservable } from "./rxUtils"
+import { StateObservable, useStateObservable } from "./rxUtils"
 import { addProp } from "./types"
 import { useEffect, useRef, useState } from "react"
 
@@ -65,13 +65,20 @@ export function Reactive<T>(target: T): Reactive<T> {
 type UnionKeys<T> = T extends any ? keyof T : never
 type UnionProp<T, K> = T extends any ? (K extends keyof T ? T[K] : undefined) : never
 
-type PropPathValue<T, P extends readonly (keyof any)[] | string> =
-    P extends [] ? T
-    : P extends `${infer K}.${infer R}` ? PropPathValue<UnionProp<T, K>, R>
-    : P extends string ? UnionProp<T, P>
-    : P extends [infer K] ? UnionProp<T, K>
-    : P extends [infer K extends keyof T, ...infer R extends (keyof any)[]] ? PropPathValue<UnionProp<T, K>, R>
-    : never
+type BasePropPath = keyof any | readonly BasePropPath[]
+
+type PropPathValue<T, P extends BasePropPath> =
+    P extends `${infer K}.${infer R}` ? PropPathValue<UnionProp<T, K>, R> :
+    P extends keyof any ? UnionProp<T, P> :
+    P extends readonly [] ? T :
+    P extends readonly [infer K extends BasePropPath, ...infer R extends (keyof any)[]] ? PropPathValue<PropPathValue<T, K>, R> :
+    never
+
+function flattenPropPath<P extends BasePropPath>(path: P): (keyof any)[] {
+    if (path instanceof Array) return path.flatMap(flattenPropPath)
+    if (typeof path == 'string') return path.split('.')
+    return [path]
+}
 
 export namespace Reactive {
     export type PropertyChange<T, P extends keyof T = keyof T> = {
@@ -93,15 +100,15 @@ export namespace Reactive {
         return (target as Reactive<typeof target>)[_reactive].orig as T
     }
 
-    export function prop<T, P extends readonly (keyof any)[]>(
+    export function prop<T, P extends readonly BasePropPath[]>(
         target: Reactive<T>, ...keys: P
     ): StateObservable<Reactive<PropPathValue<T, P extends [infer S extends string] ? S : P>>> {
+        const path = flattenPropPath(keys)
         if (keys.length == 0) {
             const out = of(target)
             addProp(out, 'value', { value: target })
             return out as any
         }
-        let path: readonly (keyof any)[] = (keys.length == 1 && typeof keys[0] == 'string') ? keys[0].split('.') : keys
 
         function inner1<T1, K extends keyof T1>(target: Reactive<T1>, key: K): StateObservable<Reactive<T1[K]>> {
             return new class extends Observable<Reactive<any>> {
@@ -130,16 +137,16 @@ export namespace Reactive {
         return inner2(target, path)
     }
 
-    type PropPathValues<T, P extends readonly (readonly (keyof any)[] | string)[]> = {
+    type PropPathValues<T, P extends readonly BasePropPath[]> = {
         [K in keyof P]: PropPathValue<T, P[K]>
     }
 
-    export function props<T, U, A extends readonly (readonly (keyof any)[] | string)[]>(
+    export function props<T, U, A extends readonly BasePropPath[]>(
         target: Reactive<T>,
         keyPaths: A,
         combine: (...args: PropPathValues<T, A>) => U,
     ): StateObservable<U> {
-        let observables: StateObservable<any>[] = keyPaths.map(p => Reactive.prop(target, ...((typeof p == 'string') ? [p] : p)))
+        let observables: StateObservable<any>[] = keyPaths.map(p => Reactive.prop(target, p))
         const obs = combineLatest(observables, combine as (...args: any[]) => U).pipe(distinctUntilChanged())
         addProp(obs, 'value', { get: () => combine(...observables.map(o => o.value) as any) })
         return obs
@@ -203,4 +210,10 @@ export function useReactive<T>(target: T): T extends object ? T : { [_ in string
     }
 
     return getProxy(Reactive.original(rTarget), subbed) as any
+}
+
+export function useReactiveProp<T, P extends readonly BasePropPath[]>(
+    target: Reactive<T>, ...keys: P
+): Reactive<PropPathValue<T, P extends [infer S extends string] ? S : P>> {
+    return useStateObservable(Reactive.prop(target, flattenPropPath(keys)))
 }
