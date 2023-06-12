@@ -18,10 +18,11 @@ export type ServerEvent = Event & (
         judgmentEndTime: number
     }
     | {
-        event: 'endRound',
-        round: number,
-        submissionIds: { [UserId in string]?: string },
-        scores: { [UserId in string]?: number },
+        event: 'endRound'
+        round: number
+        submissionIds: { [UserId in string]?: string }
+        scores: { [UserId in string]?: number }
+        scoreEndTime: number
     }
     | { event: 'endGame' }
 )

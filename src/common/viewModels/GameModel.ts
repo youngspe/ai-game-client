@@ -1,10 +1,12 @@
-import { BehaviorSubject, Subscription, combineLatest, distinctUntilChanged, map, noop, zip } from 'rxjs';
+import { BehaviorSubject, Subscription } from 'rxjs';
 import { GameState, PlayerState } from '../../proto/GameState';
 import { EventStream } from '../ApiClient';
 import { Reactive } from '../utils/Reactive';
 import { BaseViewModel, ViewModel } from './ViewModel';
 import { LobbyViewModel } from './LobbyViewModel';
 import { SubmissionViewModel } from './SubmissionViewModel';
+import { VotingViewModel } from './VotingViewModel';
+import { RoundScoreViewModel } from './RoundScoreViewModel';
 
 export class GameModel extends BaseViewModel {
     readonly props: Reactive<{
@@ -21,7 +23,6 @@ export class GameModel extends BaseViewModel {
         this._stream = stream
     }
 
-
     protected override onAttach(sub: Subscription): void {
         Reactive.prop(this.props, 'gameState.round').value
         sub.add(this._updateViewModel())
@@ -31,18 +32,23 @@ export class GameModel extends BaseViewModel {
     private _updateViewModel() {
         const getLobby = () => this.initViewModel(LobbyViewModel, { state: this.props, stream: this._stream })
         const getSubmission = () => this.initViewModel(SubmissionViewModel, { state: this.props, stream: this._stream })
+        const getVoting = () => this.initViewModel(VotingViewModel, { state: this.props, stream: this._stream })
+        const getRoundScore = () => this.initViewModel(RoundScoreViewModel, { state: this.props, stream: this._stream })
 
         return Reactive.props(this.props, [
             'gameState.started',
             'gameState.round',
             'gameState.round.judgmentEndTime',
-        ] as const, (started, round, judgmentEndTime) => {
+            'gameState.round.scoreEndTime',
+        ] as const, (started, round, judgmentEndTime, scoreEndTime) => {
             if (!started) return getLobby
             if (round == null) return null // TODO: endgame
             if (judgmentEndTime == null) return getSubmission
+            if (scoreEndTime == null) return getVoting
+            // TODO: Round results screen
 
             return null
-        }).subscribe(f => f == null ? null : this.childViewModel.next(f()))
+        }).subscribe(f => this.childViewModel.next(f == null ? null : f()))
     }
 
     private _loop() {
@@ -86,8 +92,9 @@ export class GameModel extends BaseViewModel {
                         props.gameState!.round!.submissions = submissions
                     } break
                     case 'endRound': {
-                        const { round: _round, scores, submissionIds } = e
+                        const { round: _round, scores, submissionIds, scoreEndTime } = e
                         props.gameState!.round!.submissionIds = submissionIds
+                        props.gameState!.round!.scoreEndTime = scoreEndTime
 
                         for (let userId in scores) {
                             props.gameState!.scores[userId] ??= []

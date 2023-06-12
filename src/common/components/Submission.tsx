@@ -1,23 +1,29 @@
 import React, { useState } from 'react'
 import { SubmissionViewModel } from '../viewModels/SubmissionViewModel';
 import { useReactiveProp } from '../utils/Reactive';
-import { Button, Card, Column, H1, H2, Page, Row, Text, TextInput, useRadioState } from './widgets';
-import { ScrollView } from 'react-native';
+import { Button, Card, Column, CountDown, H1, H2, H3, Page, Row, Text, TextInput, useRadioState } from './widgets';
+import { ScrollView, StyleSheet, View } from 'react-native';
 import { useCountdownSeconds } from '../utils/rxUtils';
+import { useAttachViewModel } from '../viewModels/ViewModel';
+import { fade } from '../utils/color';
+import { MyTheme, useTheme } from '../Theme';
 
 export function Submission({ viewModel }: { viewModel: SubmissionViewModel }) {
+    useAttachViewModel(viewModel)
     const state = viewModel.args.state
     const roundNumber = useReactiveProp(state, 'gameState.round.number')
     const prompt = useReactiveProp(state, 'gameState.round.prompt')
     const suggestions = useReactiveProp(state, 'playerState.styleSuggestions')
     const [custom, setCustom] = useState('')
     const endTime = useReactiveProp(state, 'gameState.round.submissionEndTime')
-    const countDown = useCountdownSeconds(new Date(endTime ?? 0))
     const StyleSelect = useRadioState<'custom' | number>()
+    const submissionStyle = useReactiveProp(state, 'playerState.submission.style')
+    const submissionOutput = useReactiveProp(state, 'playerState.submission.output')
+    const { background } = useTheme(MyTheme)
 
     return <Page>
         <H1>Round {roundNumber}</H1>
-        <H2>{endTime == null ? '' : countDown}</H2>
+        <CountDown endTime={endTime} />
         <Text>Choose a style for this prompt:</Text>
         <Card><Text>{prompt}</Text></Card>
         <ScrollView
@@ -50,10 +56,28 @@ export function Submission({ viewModel }: { viewModel: SubmissionViewModel }) {
                 </Row>
             </Column>
         </ScrollView>
-        <Button onPress={() => {
+        <Row><Button onPress={() => {
             if (StyleSelect.value == null) return
             const style = StyleSelect.value == 'custom' ? custom : suggestions?.[StyleSelect.value]
             if (style != null) viewModel.selectStyle(style)
-        }}>Submit</Button>
+        }}>Submit</Button></Row>
+
+        {
+            submissionStyle != null && <View style={{
+                ...StyleSheet.absoluteFillObject,
+                backgroundColor: fade(background, 1),
+            }}>
+                <Card style={{ margin: 'auto' }}>
+                    <Column>
+                        <H3>Submitted</H3>
+                        <Text>Style: {submissionStyle}</Text>
+                        <Text>{
+                            submissionOutput == null ? 'Generating response...'
+                                : `Response: ${submissionOutput}`
+                        }</Text>
+                    </Column>
+                </Card>
+            </View>
+        }
     </Page>
 }

@@ -101,27 +101,29 @@ export function useStateRef<T>(init: T | (() => T)): StateRef<T> {
     }
 }
 
-export function useCountdownSeconds(endTime: Date) {
+export function useCountdownSeconds(endTime: Date | number | null | undefined) {
+    const _endTime = typeof endTime == 'number' ? endTime : endTime?.getTime() ?? 0
     const now = Date.now()
-    const [time, setTime] = useState(Math.ceil((endTime.getTime() - now) / 1000))
+    const [time, setTime] = useState(Math.ceil((_endTime - now) / 1000))
 
     useEffect(() => {
-        const dif = endTime.getTime() - now
+        if (_endTime == null) return () => { }
+        const dif = _endTime - now
 
         type Timeout = ReturnType<typeof setTimeout>
         let interval: Timeout | null
         let timeout: Timeout | null = setTimeout(() => {
             timeout = null
-            setTime(Math.ceil((endTime.getTime() - Date.now()) / 1000))
+            setTime(Math.ceil((_endTime - Date.now()) / 1000))
             interval = setInterval(() => {
-                setTime(Math.ceil((endTime.getTime() - Date.now()) / 1000))
+                setTime(Math.ceil((_endTime - Date.now()) / 1000))
             }, 1000)
         }, dif % 1000)
         return () => {
             if (timeout != null) { clearTimeout(timeout) }
             if (interval != null) { clearTimeout(interval) }
         }
-    }, [endTime.getTime()])
+    }, [_endTime])
 
-    return time
+    return endTime != null ? time : endTime
 }

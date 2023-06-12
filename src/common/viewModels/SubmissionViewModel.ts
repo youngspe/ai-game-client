@@ -14,6 +14,7 @@ export class SubmissionViewModel extends BaseViewModel {
 
     selectStyle(style: string) {
         this.args.stream.send({ event: 'submit', style })
+        this.args.state.playerState!.submission = { style }
     }
 }
 

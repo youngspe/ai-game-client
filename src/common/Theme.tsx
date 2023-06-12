@@ -63,6 +63,14 @@ export const MyTheme = createTheme(({ accent, background, foreground }: { accent
                 alignItems: 'stretch',
                 ...textContainerAttrs,
             }),
+            radioButton: (state: { pressed: boolean, enabled: boolean, selected: boolean }) => style<ViewStyle>()({
+                borderColor: state.selected ? accent : foreground,
+                backgroundColor: fade(accent, 5),
+                flexGrow: 0,
+            }),
+            radioButtonText: (state: { pressed: boolean, enabled: boolean, selected: boolean }) => style<TextStyle>()({
+                color: state.selected ? accent : foreground,
+            }),
             buttonText: style<TextStyle>()({
                 textAlign: 'center',
                 fontWeight: 'bold',

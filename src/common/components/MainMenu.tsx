@@ -22,7 +22,10 @@ export function MainMenu({ viewModel }: { viewModel: MainMenuViewModel }) {
             />
         </Rows>
         <Hr />
-        <Row><Button onPress={() => viewModel.start(displayName)}>Start a new game</Button></Row>
+        <Row><Button
+            disabled={!displayName}
+            onPress={() => viewModel.start(displayName)}
+        >Start a new game</Button></Row>
         <Hr />
         <Rows>
             <Text>Or join an existing game:</Text>
@@ -33,6 +36,7 @@ export function MainMenu({ viewModel }: { viewModel: MainMenuViewModel }) {
                 style={{ flexGrow: 1 }}
             />
             <Button
+                disabled={!joinCode || !displayName}
                 style={{ flexGrow: 1, alignSelf: 'stretch' }}
                 onPress={() => viewModel.join(joinCode, displayName)}
             >

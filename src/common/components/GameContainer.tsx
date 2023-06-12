@@ -8,6 +8,8 @@ import { Loading } from './Loading';
 import { useReactiveProp } from '../utils/Reactive';
 import { SubmissionViewModel } from '../viewModels/SubmissionViewModel';
 import { Submission } from './Submission';
+import { VotingViewModel } from '../viewModels/VotingViewModel';
+import { Voting } from './Voting';
 
 export function GameContainer({ viewModel }: { viewModel: GameViewModel }) {
     useAttachViewModel(viewModel)
@@ -17,5 +19,6 @@ export function GameContainer({ viewModel }: { viewModel: GameViewModel }) {
 
     if (childVm instanceof LobbyViewModel) return <Lobby viewModel={childVm} />
     if (childVm instanceof SubmissionViewModel) return <Submission viewModel={childVm} />
+    if (childVm instanceof VotingViewModel) return <Voting viewModel={childVm} />
     return <Loading title={title} />
 }

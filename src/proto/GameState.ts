@@ -18,6 +18,7 @@ export interface GameState {
         submissionEndTime?: number
         submissionIds?: { [UserId in string]?: string },
         judgmentEndTime?: number
+        scoreEndTime?: number
         voteCount: number
     }
 }

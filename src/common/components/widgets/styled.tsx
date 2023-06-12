@@ -1,4 +1,4 @@
-import React, { PropsWithChildren, useCallback, useState } from 'react'
+import React, { PropsWithChildren, useCallback, useMemo, useState } from 'react'
 import * as Rn from 'react-native'
 import { MyTheme, useTheme } from '../../Theme'
 import { fade } from '../../utils/color'
@@ -12,41 +12,67 @@ export function Button(
     const enabled = !disabled
     const { button, buttonText } = useTheme(MyTheme)
     const themeStyle = useCallback(
-        (state: Rn.PressableStateCallbackType) => [
-            button({ pressed: state.pressed, enabled }),
-            typeof style == 'function' ? style(state) : style,
-        ],
+        (_state: Rn.PressableStateCallbackType) => {
+            const state = { enabled, ..._state }
+            return [
+                button(state),
+                typeof style == 'function' ? style(state) : style,
+            ]
+        },
         [enabled, style],
     )
 
     return <Rn.Pressable
-        onPress={onPress}
+        onPress={enabled ? onPress : null}
         role='button'
         style={themeStyle}
         {...props}
-    >
-        <Text style={[buttonText, textStyle]}>{children}</Text>
-    </Rn.Pressable>
+    >{_state => {
+        const state = { enabled, ..._state }
+        return <Text style={[buttonText, typeof textStyle == 'function' ? textStyle(state) : textStyle]}>{children}</Text>
+    }}
+    </Rn.Pressable >
 }
 
 export namespace Button {
-    export interface Props extends PropsWithChildren<Rn.PressableProps> {
-        textStyle?: Rn.TextStyle
+    export interface Props extends Omit<PropsWithChildren<Rn.PressableProps>, 'style'> {
+        style?: Rn.ViewStyle | ((state: State) => Rn.StyleProp<Rn.ViewStyle>)
+        textStyle?: Rn.TextStyle | ((state: State) => Rn.StyleProp<Rn.TextStyle>)
+    }
+    export interface State {
+        pressed: boolean
+        enabled: boolean
     }
 }
 
-export function RadioButton<T = unknown>({ value, state, children, disabled, ...props }: RadioButton.Props<T>) {
+export function RadioButton<T = unknown>({ value, state, children, style, textStyle, ...props }: RadioButton.Props<T>) {
+    const { radioButton, radioButtonText } = useTheme(MyTheme)
+    const selected = state.value === value
+
     return <Button
-        disabled={disabled || state.value === value}
-        onPress={() => state.value = value}
+        onPress={selected ? null : (() => state.value = value)}
+        style={_state => {
+            const state = { selected, ..._state }
+            return [radioButton(state), typeof style == 'function' ? style(state) : style]
+        }}
+        textStyle={_state => {
+            const state = { selected, ..._state }
+            return [radioButtonText(state), typeof textStyle == 'function' ? textStyle(state) : textStyle]
+        }}
         {...props}
     >{children}</Button>
 }
 
 export namespace RadioButton {
-    export interface Props<T> extends Omit<Button.Props, 'onPress'> {
+    export interface Props<T> extends Omit<Button.Props, 'textStyle' | 'style' | 'onPress'> {
+        style?: Rn.ViewStyle | ((state: State) => Rn.StyleProp<Rn.ViewStyle>)
+        textStyle?: Rn.TextStyle | ((state: State) => Rn.StyleProp<Rn.TextStyle>)
         value: T
         state: StateRef<T>
+    }
+
+    export interface State extends Button.State {
+        selected: boolean
     }
 }
 
@@ -59,9 +85,17 @@ export function useRadioState<T>({ init, onSelect }: {
     init?: T | (() => T),
     onSelect?: (value: T) => void,
 } = {}): RadioState<T> {
-    const state = useStateRef(init)
-    addProp(state, 'RadioButton', { value: (props: Omit<RadioButton.Props<T>, 'state'>) => RadioButton({ state, ...props }) })
-    return state
+    const [state, setState] = useState(init)
+    const stateRef = {
+        get value() { return state },
+        set value(value) {
+            setState(value)
+            if (value !== undefined) { onSelect?.(value) }
+        },
+    }
+
+    addProp(stateRef, 'RadioButton', { value: (props: Omit<RadioButton.Props<T>, 'state'>) => RadioButton({ state: stateRef, ...props }) })
+    return stateRef
 }
 
 export function Text({ style, children, ...props }: Rn.TextProps) {
