@@ -32,6 +32,7 @@ export function MainMenu({ viewModel }: { viewModel: MainMenuViewModel }) {
             <TextInput
                 value={joinCode}
                 onChangeText={setJoinCode}
+                onSubmitEditing={e => setJoinCode(e.nativeEvent.text)}
                 placeholder='Enter join code'
                 style={{ flexGrow: 1 }}
             />

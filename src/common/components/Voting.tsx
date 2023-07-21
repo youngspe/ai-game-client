@@ -31,7 +31,7 @@ export function Voting({ viewModel }: { viewModel: VotingViewModel }) {
             {subIds.map(subId => {
                 const voteCount = votes[subId] ?? 0
                 return <Row key={subId}>
-                    <Card style={{ flexGrow: 1.0 }}>
+                    <Card style={{ flex: 1.0 }}>
                         <H3>{submissions[subId]?.style}</H3>
                         <Text>{submissions[subId]?.output}</Text>
                     </Card>

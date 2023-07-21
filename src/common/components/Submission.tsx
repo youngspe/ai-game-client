@@ -40,6 +40,7 @@ export function Submission({ viewModel }: { viewModel: SubmissionViewModel }) {
                 <Row>
                     <StyleSelect.RadioButton value='custom' disabled={!custom}>Select</StyleSelect.RadioButton>
                     <TextInput
+                        style={{ flex: 1.0 }}
                         placeholder='Create your own!'
                         value={custom}
                         onChangeText={t => {
@@ -60,7 +61,7 @@ export function Submission({ viewModel }: { viewModel: SubmissionViewModel }) {
             if (StyleSelect.value == null) return
             const style = StyleSelect.value == 'custom' ? custom : suggestions?.[StyleSelect.value]
             if (style != null) viewModel.selectStyle(style)
-        }}>Submit</Button></Row>
+        }} disabled={StyleSelect.value == null}>Submit</Button></Row>
 
         {
             submissionStyle != null && <View style={{

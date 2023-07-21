@@ -12,7 +12,7 @@ export function Page({ style, children, ...props }: ViewProps) {
                 marginHorizontal: 'auto',
                 maxHeight: height,
                 // height: height * 0.5
-                minHeight: Math.min(400, height),
+                minHeight: Math.min(600, height),
                 maxWidth: 600,
                 alignSelf: 'stretch',
                 flexShrink: 1,
