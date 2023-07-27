@@ -2,27 +2,34 @@ import { Observable, Subject, concat, of } from "rxjs"
 import { ClientEvent, ServerEvent } from "../proto/Event"
 import { TokenStore } from "./TokenStore"
 import { asyncValues } from "./utils/rxUtils"
+import { FactoryKey, Inject, Singleton, Target } from "checked-inject"
+import { CommonKeys } from "./CommonModule"
 
 export type ApiResult<T = unknown> = { ok: T } | { err: Response }
 
-export interface ApiClient {
-    createGame(): Promise<ApiResult<{ gameId: string }>>
-    joinGame(gameId: string, displayName: string): Promise<ApiResult>
-    getEventStream(gameId: string): Promise<ApiResult<EventStream>>
+export abstract class ApiClient {
+    abstract createGame(): Promise<ApiResult<{ gameId: string }>>
+    abstract joinGame(gameId: string, displayName: string): Promise<ApiResult>
+    abstract getEventStream(gameId: string): Promise<ApiResult<EventStream>>
 }
 
 const joinUriPath = (...parts: string[]) => parts.map(encodeURIComponent).join('/')
 
-export class DefaultApiClient implements ApiClient {
+export class DefaultApiClient extends ApiClient {
     private readonly _baseUrlHttp: string
-    private readonly _baseUrlWs: string
     private readonly _tokenStore: TokenStore
     private _token: string | null = null
+    private _eventStreamFac: Target<typeof DefaultEventStream.Factory>
 
-    constructor(baseUrlHttp: string, baseUrlWs: string, tokenStore: TokenStore) {
-        this._baseUrlHttp = baseUrlHttp
-        this._baseUrlWs = baseUrlWs
+    constructor(
+        baseUrls: Target<typeof CommonKeys.BaseUrls>,
+        tokenStore: TokenStore,
+        eventStreamFac: Target<typeof DefaultEventStream.Factory>,
+    ) {
+        super()
+        this._baseUrlHttp = baseUrls.baseUrlHttp
         this._tokenStore = tokenStore
+        this._eventStreamFac = eventStreamFac
     }
 
     async createGame(): Promise<ApiResult<{ gameId: string }>> {
@@ -44,7 +51,7 @@ export class DefaultApiClient implements ApiClient {
     async getEventStream(gameId: string): Promise<ApiResult<EventStream>> {
         const token = await this._initToken()
         if (typeof token != 'string') return { err: token ?? new Response(null, { status: 401 }) }
-        const stream = new DefaultEventStream(this._baseUrlWs, gameId, token)
+        const stream = this._eventStreamFac(gameId, token)
         await stream.init()
         return { ok: stream }
     }
@@ -86,16 +93,19 @@ export class DefaultApiClient implements ApiClient {
 
         return token
     }
+
+    static scope = Singleton
+    static inject = () => Inject.construct(this, CommonKeys.BaseUrls, TokenStore, DefaultEventStream.Factory)
 }
 
-
-export interface EventStream {
-    send(...events: ClientEvent[]): void
-    recv(): Observable<ServerEvent>
-    close(): void
+export abstract class EventStream {
+    async init(): Promise<void> { }
+    abstract send(...events: ClientEvent[]): void
+    abstract recv(): Observable<ServerEvent>
+    abstract close(): void
 }
 
-export class DefaultEventStream implements EventStream {
+export class DefaultEventStream extends EventStream {
     private _ws: WebSocket | null = null
     private _subject?: Subject<ServerEvent>
     private readonly _baseUrl: string
@@ -108,6 +118,7 @@ export class DefaultEventStream implements EventStream {
     get closed() { return this._closed }
 
     constructor(baseUrl: string, gameId: string, token: string) {
+        super()
         this._baseUrl = baseUrl
         this._gameId = gameId
         this._token = token
@@ -184,4 +195,8 @@ export class DefaultEventStream implements EventStream {
         this._closed = true
         this._subject?.complete()
     }
+
+    static Factory = class extends FactoryKey({
+        baseUrls: CommonKeys.BaseUrls,
+    }, ({ baseUrls }, gameId: string, token: string) => new DefaultEventStream(baseUrls.baseUrlWs, gameId, token)) { private _: any }
 }

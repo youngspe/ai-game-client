@@ -4,7 +4,7 @@ import { MainMenu } from './components/MainMenu'
 import { Lobby } from './components/Lobby'
 import { AppModel } from './viewModels/AppModel'
 import { useReactive } from './utils/Reactive'
-import { MainMenuViewModel } from './viewModels/MainMenuViewModel'
+import MainMenuViewModel from './viewModels/MainMenuViewModel'
 import { GameModel } from './viewModels/GameModel'
 import { GameContainer } from './components/GameContainer'
 

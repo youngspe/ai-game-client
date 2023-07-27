@@ -3,6 +3,10 @@ import { AppRegistry } from 'react-native'
 
 import App from '../common/App'
 import { AppModel, Device } from '../common/viewModels/AppModel'
+import { TokenStore } from '../common/TokenStore'
+import { Singleton } from 'checked-inject'
+import { WebApp, WebAppModule } from './WebModule'
+
 
 const device: Device = {
     window: {
@@ -43,5 +47,9 @@ if (history.state != 'DEFAULT') {
     history.pushState('DEFAULT', '')
 }
 const appModel = new AppModel(device)
-AppRegistry.registerComponent('App', () => () => React.createElement(App, { appModel }));
-AppRegistry.runApplication('App', { rootTag: document.getElementById('react-root') })
+
+WebAppModule.inject({ WebApp }, ({ WebApp }) => {
+    AppRegistry.registerComponent('App', () => () => React.createElement(App, { appModel }));
+    AppRegistry.runApplication('App', { rootTag: document.getElementById('react-root') })
+    WebApp.initApp()
+})

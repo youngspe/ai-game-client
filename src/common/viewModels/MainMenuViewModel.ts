@@ -1,10 +1,19 @@
 import { BaseViewModel, ViewModel } from "./ViewModel";
 import { GameModel } from "./GameModel";
+import { FactoryKey } from "checked-inject";
+import { ApiClient } from "../ApiClient";
 
-export class MainMenuViewModel extends BaseViewModel {
+export default class MainMenuViewModel extends BaseViewModel {
+    private readonly _apiClient: ApiClient
+
+    constructor(base: BaseViewModel.Deps, apiClient: ApiClient) {
+        super(base)
+        this._apiClient = apiClient
+    }
+
     override navBehavior: ViewModel.NavBehavior = 'unwind'
     async start(displayName: string) {
-        const createRes = await this.deps.apiClient.createGame()
+        const createRes = await this._apiClient.createGame()
         if ('ok' in createRes) {
             await this.join(createRes.ok.gameId, displayName)
             return
@@ -22,4 +31,9 @@ export class MainMenuViewModel extends BaseViewModel {
         }
         throw new Error('TODO: error state')
     }
+
+    static Factory = class extends FactoryKey({
+        base: BaseViewModel.Deps,
+        api: ApiClient,
+    }, ({ base, api }) => new this(base, api)) { private _: any }
 }

@@ -1,42 +1,34 @@
 import { Reactive } from "../utils/Reactive";
 import { ascribe } from "../utils/types";
-import { MainMenuViewModel } from "./MainMenuViewModel";
+import MainMenuViewModel from "./MainMenuViewModel";
 import { BaseViewModel, ViewModel } from "./ViewModel";
 import { Navigator } from "../utils/navigator";
 import { TokenStore } from "../TokenStore";
-import { DefaultApiClient } from "../ApiClient";
+import { ApiClient, DefaultApiClient } from "../ApiClient";
+import { CommonKeys, HistoryManager, WindowManager } from "../CommonModule";
+import { Inject, Target } from "checked-inject";
 
-export interface Device {
-    window?: {
-        readonly setBackground?: (color: string) => void
-    }
-    history?: {
-        exit(): void
-        onBackListener?: () => void
-    }
-    tokenStore: TokenStore
-    baseUrlHttp: string,
-    baseUrlWs: string,
-}
+
+export const DeviceKey = Inject.from({
+    window: WindowManager,
+    history: HistoryManager,
+    tokenStore: TokenStore,
+    baseUrls: CommonKeys.BaseUrls,
+})
+
+export type Device = Target<typeof DeviceKey>
+
+
 
 export class AppModel implements Navigator {
     readonly deps: BaseViewModel.Deps
 
     readonly props: Reactive<{ currentViewModel: ViewModel }>
 
-    readonly device: Device
-
     private _backStack: ViewModel[] = []
 
-    constructor(device: Device) {
-        this.device = device
-        if (device.history) {
-            device.history.onBackListener = () => this.back()
-        }
-        this.deps = {
-            navigator: this,
-            apiClient: new DefaultApiClient(device.baseUrlHttp, device.baseUrlWs, device.tokenStore)
-        }
+    constructor() {
+        device.history.onBackListener = () => this.back()
         this.props = Reactive({
             currentViewModel: ascribe<ViewModel>(new MainMenuViewModel(this.deps)),
         })
@@ -86,4 +78,8 @@ export class AppModel implements Navigator {
         this.props.currentViewModel = old
         return false
     }
+
+    readonly navigator = this
+
+    static inject = Inject.construct(this, ApiClient)
 }

@@ -2,7 +2,7 @@ import React, { useState } from 'react'
 import { Button, Hr, Row, Rows, Text, TextInput } from "./widgets/styled";
 import { H1 } from './widgets/Heading';
 import { Page } from './widgets/Page';
-import { MainMenuViewModel } from '../viewModels/MainMenuViewModel';
+import MainMenuViewModel from '../viewModels/MainMenuViewModel';
 import { useAttachViewModel } from '../viewModels/ViewModel';
 
 export function MainMenu({ viewModel }: { viewModel: MainMenuViewModel }) {

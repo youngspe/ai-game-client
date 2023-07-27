@@ -3,6 +3,7 @@ import { Closeable, useCloseable } from '../utils/Closeable';
 import { Navigator } from '../utils/navigator';
 import { useEffect } from 'react';
 import { ApiClient } from '../ApiClient';
+import { DependencyKey, Target } from 'checked-inject';
 
 export interface ViewModel {
     readonly navBehavior: ViewModel.NavBehavior
@@ -22,7 +23,7 @@ export namespace ViewModel {
         | 'discard'
 }
 
-export abstract class BaseViewModel<Deps extends BaseViewModel.Deps = BaseViewModel.Deps> implements ViewModel {
+export abstract class BaseViewModel implements ViewModel {
     protected onAttach?(sub: Subscription): void { }
     protected onDetach?(): void { }
     private _attachCount = 0
@@ -44,7 +45,7 @@ export abstract class BaseViewModel<Deps extends BaseViewModel.Deps = BaseViewMo
         }
     })
 
-    constructor(deps: Deps) {
+    constructor(deps: BaseViewModel.Deps) {
         this.deps = deps
     }
 
@@ -64,7 +65,7 @@ export abstract class BaseViewModel<Deps extends BaseViewModel.Deps = BaseViewMo
     }
 
     protected navigate<Vm extends ViewModel, Args extends any[] = []>(
-        vm: Vm | (new (deps: Deps, ...args: Args) => Vm),
+        vm: Vm | DependencyKey.Of<(...args: Args) => Vm>,
         ...args: Args
     ) {
         if (typeof vm == 'function') {
@@ -80,10 +81,11 @@ export abstract class BaseViewModel<Deps extends BaseViewModel.Deps = BaseViewMo
 }
 
 export namespace BaseViewModel {
-    export interface Deps {
+    export const Deps = Inject.from({
         navigator: Navigator,
         apiClient: ApiClient,
-    }
+    })
+    export type Deps = Target<typeof Deps>
 }
 
 export function useAttachViewModel<V extends ViewModel>(viewModel: V): V {
