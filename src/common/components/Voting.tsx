@@ -8,7 +8,7 @@ import { ScrollView } from 'react-native'
 
 export function Voting({ viewModel }: { viewModel: VotingViewModel }) {
     useAttachViewModel(viewModel)
-    const state = viewModel.args.state
+    const state = viewModel.state
     const mySubmission = useReactiveProp(state, 'playerState.submission')
     const submissions = useReactiveProp(state, 'gameState.round.submissions') ?? {}
     const votes = useReactiveProp(state, 'playerState.votes') ?? {}

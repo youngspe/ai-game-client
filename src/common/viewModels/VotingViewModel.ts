@@ -1,29 +1,31 @@
 import { Subscription } from "rxjs";
-import { GameState, PlayerState } from "../../proto/GameState";
 import { Reactive } from "../utils/Reactive";
 import { BaseViewModel } from "./ViewModel";
-import { EventStream } from "../ApiClient";
 import { ascribe } from "../utils/types";
 import { shuffle } from "../utils/rand";
+import { ViewModelFactoryKey } from "../utils/ViewModelFactoryKey";
+import { GameData } from "../GameData";
+import { Inject, Target } from "checked-inject";
 
 export class VotingViewModel extends BaseViewModel {
-    readonly args: VotingViewModel.Args
+    private readonly _deps: VotingViewModel.Deps
+    get state() { return this._deps.state }
     readonly props: Reactive<{
         votesRemaining: number
         submissionOrder: string[]
     }>
 
-    constructor(deps: BaseViewModel.Deps, args: VotingViewModel.Args) {
-        super(deps)
-        this.args = args
+    constructor(base: BaseViewModel.BaseDeps, deps: VotingViewModel.Deps) {
+        super(base)
+        this._deps = deps
         this.props = Reactive({
-            votesRemaining: args.state.gameState?.round?.voteCount ?? 0,
+            votesRemaining: deps.state.gameState?.round?.voteCount ?? 0,
             submissionOrder: ascribe<string[]>([]),
         })
     }
 
     protected onAttach(sub: Subscription): void {
-        sub.add(Reactive.props(this.args.state, [
+        sub.add(Reactive.props(this._deps.state, [
             'gameState.round.submissions',
             'playerState.submission.id',
         ] as const, (submissions, id) => (submissions && Object.getOwnPropertyNames(submissions).filter(s => s !== id)) ?? []
@@ -34,8 +36,8 @@ export class VotingViewModel extends BaseViewModel {
     }
 
     vote(submissionId: string, positive: boolean) {
-        const votes = this.args.state.playerState!.votes ?? {}
-        this.args.state.playerState!.votes = votes
+        const votes = this._deps.state.playerState!.votes ?? {}
+        this._deps.state.playerState!.votes = votes
         votes[submissionId] ??= 0
 
         if (positive && this.props.votesRemaining > 0) {
@@ -48,13 +50,18 @@ export class VotingViewModel extends BaseViewModel {
             return
         }
 
-        this.args.stream.send({ event: 'vote', votes })
+        this._deps.stream.send({ event: 'vote', votes })
     }
+
 }
 
 export namespace VotingViewModel {
-    export interface Args {
-        state: Reactive<{ gameState?: GameState, playerState?: PlayerState }>,
-        stream: EventStream,
-    }
+    export const Deps = Inject.from({
+        state: GameData.State,
+        stream: GameData.Stream
+    })
+
+    export type Deps = Target<typeof Deps>
+
+    export const Factory = class extends ViewModelFactoryKey(VotingViewModel, Deps) { private _: any }
 }

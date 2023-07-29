@@ -1,7 +1,8 @@
 import { TypeKey, Module } from "checked-inject";
 import { ApiClient, DefaultApiClient } from "./ApiClient";
 import { ViewModel } from "./viewModels/ViewModel";
-import MainMenuViewModel from "./viewModels/MainMenuViewModel";
+import { MainMenuViewModel } from "./viewModels/MainMenuViewModel";
+import { Navigator, DefaultNavigator } from "./utils/navigator";
 
 export abstract class HistoryManager {
     abstract exit(): void
@@ -20,6 +21,6 @@ export class MainViewModelFactory extends TypeKey<() => ViewModel>() { private _
 
 export const CommonModule = Module(ct => ct
     .bind(ApiClient, DefaultApiClient)
+    .bind(Navigator, DefaultNavigator)
     .bind(MainViewModelFactory, MainMenuViewModel.Factory)
 )
-

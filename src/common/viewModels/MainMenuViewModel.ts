@@ -1,19 +1,21 @@
 import { BaseViewModel, ViewModel } from "./ViewModel";
 import { GameModel } from "./GameModel";
-import { FactoryKey } from "checked-inject";
+import { FactoryKey, Inject, Target } from "checked-inject";
 import { ApiClient } from "../ApiClient";
+import { ViewModelFactoryKey } from "../utils/ViewModelFactoryKey";
+import { GameComponent } from "../GameData";
 
-export default class MainMenuViewModel extends BaseViewModel {
-    private readonly _apiClient: ApiClient
+export class MainMenuViewModel extends BaseViewModel {
+    private readonly _deps: MainMenuViewModel.Deps
 
-    constructor(base: BaseViewModel.Deps, apiClient: ApiClient) {
+    constructor(base: BaseViewModel.BaseDeps, deps: MainMenuViewModel.Deps) {
         super(base)
-        this._apiClient = apiClient
+        this._deps = deps
     }
 
     override navBehavior: ViewModel.NavBehavior = 'unwind'
     async start(displayName: string) {
-        const createRes = await this._apiClient.createGame()
+        const createRes = await this._deps.apiClient.createGame()
         if ('ok' in createRes) {
             await this.join(createRes.ok.gameId, displayName)
             return
@@ -22,18 +24,24 @@ export default class MainMenuViewModel extends BaseViewModel {
         throw new Error('TODO: error state')
     }
     async join(joinCode: string, displayName: string) {
-        if ('ok' in await this.deps.apiClient.joinGame(joinCode, displayName)) {
-            const streamRes = await this.deps.apiClient.getEventStream(joinCode)
+        if ('ok' in await this._deps.apiClient.joinGame(joinCode, displayName)) {
+            const streamRes = await this._deps.apiClient.getEventStream(joinCode)
             if ('ok' in streamRes) {
-                this.navigate(GameModel, streamRes.ok)
+                this.navigate(this._deps.gameModel(streamRes.ok))
             }
             return
         }
         throw new Error('TODO: error state')
     }
 
-    static Factory = class extends FactoryKey({
-        base: BaseViewModel.Deps,
-        api: ApiClient,
-    }, ({ base, api }) => new this(base, api)) { private _: any }
+}
+
+export namespace MainMenuViewModel {
+    export const Deps = Inject.from({
+        apiClient: ApiClient,
+        gameModel: GameComponent.Resolve(GameModel).Cyclic(),
+    })
+
+    export type Deps = Target<typeof Deps>
+    export const Factory = class extends ViewModelFactoryKey(MainMenuViewModel, Deps) { private _: any }
 }

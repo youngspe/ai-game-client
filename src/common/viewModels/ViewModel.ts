@@ -3,7 +3,7 @@ import { Closeable, useCloseable } from '../utils/Closeable';
 import { Navigator } from '../utils/navigator';
 import { useEffect } from 'react';
 import { ApiClient } from '../ApiClient';
-import { DependencyKey, Target } from 'checked-inject';
+import { DependencyKey, Inject, Target } from 'checked-inject';
 
 export interface ViewModel {
     readonly navBehavior: ViewModel.NavBehavior
@@ -29,8 +29,8 @@ export abstract class BaseViewModel implements ViewModel {
     private _attachCount = 0
     private _sub = new Subscription()
 
-    protected readonly deps: Deps
-    protected get navigator() { return this.deps.navigator }
+    protected readonly baseDeps: BaseViewModel.BaseDeps
+    protected get navigator() { return this.baseDeps.navigator }
 
     readonly navBehavior: ViewModel.NavBehavior = 'push'
     readonly hideBehavior: ViewModel.HideBehavior = 'retain'
@@ -45,8 +45,8 @@ export abstract class BaseViewModel implements ViewModel {
         }
     })
 
-    constructor(deps: BaseViewModel.Deps) {
-        this.deps = deps
+    constructor(deps: BaseViewModel.BaseDeps) {
+        this.baseDeps = deps
     }
 
     attach(): Closeable {
@@ -57,35 +57,20 @@ export abstract class BaseViewModel implements ViewModel {
         return this._detachCloseable
     }
 
-    protected initViewModel<Vm, Args extends any[]>(
-        ctor: new (deps: Deps, ...args: Args) => Vm,
-        ...args: Args
-    ): Vm {
-        return new ctor(this.deps, ...args)
-    }
-
-    protected navigate<Vm extends ViewModel, Args extends any[] = []>(
-        vm: Vm | DependencyKey.Of<(...args: Args) => Vm>,
-        ...args: Args
-    ) {
-        if (typeof vm == 'function') {
-            return this.deps.navigator.open(new vm(this.deps, ...args))
-        } else {
-            return this.deps.navigator.open(vm)
-        }
+    protected navigate<Vm extends ViewModel, Args extends any[] = []>(vm: Vm, ...args: Args) {
+        this.baseDeps.navigator.open(vm)
     }
 
     protected goBack(): boolean {
-        return this.deps.navigator.back()
+        return this.baseDeps.navigator.back()
     }
 }
 
 export namespace BaseViewModel {
-    export const Deps = Inject.from({
-        navigator: Navigator,
-        apiClient: ApiClient,
+    export const BaseDeps = Inject.from({
+        navigator: Navigator.Cyclic(),
     })
-    export type Deps = Target<typeof Deps>
+    export type BaseDeps = Target<typeof BaseDeps>
 }
 
 export function useAttachViewModel<V extends ViewModel>(viewModel: V): V {

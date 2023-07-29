@@ -1,30 +1,33 @@
+import { Inject, Target } from "checked-inject";
 import { GameState, PlayerInfo, PlayerState } from "../../proto/GameState";
 import { EventStream } from "../ApiClient";
 import { Reactive } from "../utils/Reactive";
+import { ViewModelFactoryKey } from "../utils/ViewModelFactoryKey";
 import { StateObservable } from "../utils/rxUtils";
 import { BaseViewModel } from "./ViewModel";
+import { GameData } from "../GameData";
 
 export class LobbyViewModel extends BaseViewModel {
-    readonly args: LobbyViewModel.Args
+    private readonly _deps: LobbyViewModel.Deps
 
-    constructor(deps: BaseViewModel.Deps, props: LobbyViewModel.Args) {
-        super(deps)
-        this.args = props
+    constructor(base: BaseViewModel.BaseDeps, deps: LobbyViewModel.Deps) {
+        super(base)
+        this._deps = deps
     }
 
     cancel() { this.goBack() }
 
     start() {
-        this.args.stream.send({ event: "start" })
+        this._deps.stream.send({ event: "start" })
     }
 }
 
 export namespace LobbyViewModel {
-    export interface Args {
-        state: Reactive<{
-            gameState?: GameState
-            playerState?: PlayerState
-        }>
-        stream: EventStream
-    }
+    export const Deps = Inject.from({
+        state: GameData.State,
+        stream: GameData.Stream,
+    })
+    export type Deps = Target<typeof Deps>
+    export class Factory extends ViewModelFactoryKey(LobbyViewModel, Deps) { private _: any }
+
 }

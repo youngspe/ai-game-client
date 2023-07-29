@@ -1,26 +1,29 @@
-import { Subscription } from "rxjs";
-import { GameState, PlayerState } from "../../proto/GameState";
-import { Reactive } from "../utils/Reactive";
 import { BaseViewModel } from "./ViewModel";
-import { EventStream } from "../ApiClient";
+import { ViewModelFactoryKey } from "../utils/ViewModelFactoryKey";
+import { GameData } from "../GameData";
+import { Inject, Target } from "checked-inject";
 
 export class SubmissionViewModel extends BaseViewModel {
-    readonly args: SubmissionViewModel.Args;
+    private readonly _deps: SubmissionViewModel.Deps;
 
-    constructor(deps: BaseViewModel.Deps, args: SubmissionViewModel.Args) {
-        super(deps)
-        this.args = args
+    constructor(base: BaseViewModel.BaseDeps, deps: SubmissionViewModel.Deps) {
+        super(base)
+        this._deps = deps
     }
 
     selectStyle(style: string) {
-        this.args.stream.send({ event: 'submit', style })
-        this.args.state.playerState!.submission = { style }
+        this._deps.stream.send({ event: 'submit', style })
+        this._deps.state.playerState!.submission = { style }
     }
+
 }
 
 export namespace SubmissionViewModel {
-    export interface Args {
-        state: Reactive<{ gameState?: GameState, playerState?: PlayerState }>
-        stream: EventStream,
-    }
+    export const Deps = Inject.from({
+        state: GameData.State,
+        stream: GameData.Stream,
+    })
+
+    export type Deps = Target<typeof Deps>
+    export class Factory extends ViewModelFactoryKey(SubmissionViewModel, Deps) { private _: any }
 }
