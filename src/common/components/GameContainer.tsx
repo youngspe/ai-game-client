@@ -14,7 +14,7 @@ import { Voting } from './Voting';
 export function GameContainer({ viewModel }: { viewModel: GameViewModel }) {
     useAttachViewModel(viewModel)
     const childVm = useStateObservable(viewModel.childViewModel)
-    const roundNumber = useReactiveProp(viewModel.props, 'gameState.round.number')
+    const roundNumber = useReactiveProp(viewModel.state, 'gameState.round.number')
     const title = roundNumber == null ? '[untitled game]' : `Round ${roundNumber}`
 
     if (childVm instanceof LobbyViewModel) return <Lobby viewModel={childVm} />

@@ -3,7 +3,7 @@ import { Closeable, useCloseable } from '../utils/Closeable';
 import { Navigator } from '../utils/navigator';
 import { useEffect } from 'react';
 import { ApiClient } from '../ApiClient';
-import { DependencyKey, Inject, Target } from 'checked-inject';
+import { DependencyKey, Inject, Injectable, Target } from 'checked-inject';
 
 export interface ViewModel {
     readonly navBehavior: ViewModel.NavBehavior
@@ -23,7 +23,7 @@ export namespace ViewModel {
         | 'discard'
 }
 
-export abstract class BaseViewModel implements ViewModel {
+export abstract class BaseViewModel extends Injectable implements ViewModel {
     protected onAttach?(sub: Subscription): void { }
     protected onDetach?(): void { }
     private _attachCount = 0
@@ -46,6 +46,7 @@ export abstract class BaseViewModel implements ViewModel {
     })
 
     constructor(deps: BaseViewModel.BaseDeps) {
+        super()
         this.baseDeps = deps
     }
 

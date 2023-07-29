@@ -9,6 +9,7 @@ import { GameData } from "../GameData";
 
 export class LobbyViewModel extends BaseViewModel {
     private readonly _deps: LobbyViewModel.Deps
+    get state() { return this._deps.state }
 
     constructor(base: BaseViewModel.BaseDeps, deps: LobbyViewModel.Deps) {
         super(base)

@@ -1,5 +1,4 @@
 import { BehaviorSubject, Subscription } from 'rxjs';
-import { GameState, PlayerState } from '../../proto/GameState';
 import { Reactive } from '../utils/Reactive';
 import { BaseViewModel, ViewModel } from './ViewModel';
 import { LobbyViewModel } from './LobbyViewModel';
@@ -14,6 +13,7 @@ export class GameModel extends BaseViewModel {
     readonly childViewModel = new BehaviorSubject<ViewModel | null>(null)
 
     private readonly _deps: GameModel.Deps
+    get state() { return this._deps.stateManager.props }
 
     constructor(base: BaseViewModel.BaseDeps, deps: GameModel.Deps) {
         super(base)

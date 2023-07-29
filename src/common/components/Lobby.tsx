@@ -9,7 +9,7 @@ import { useReactiveProp } from '../utils/Reactive';
 
 export function Lobby({ viewModel }: { viewModel: LobbyViewModel }) {
     useAttachViewModel(viewModel)
-    const state = viewModel.args.state
+    const state = viewModel.state
     const userId = useReactiveProp(state, 'playerState.userId')
     const ownerId = useReactiveProp(state, 'gameState.ownerId')
     const gameId = useReactiveProp(state, 'gameState.gameId')

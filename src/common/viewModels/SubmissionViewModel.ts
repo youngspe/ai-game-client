@@ -5,6 +5,7 @@ import { Inject, Target } from "checked-inject";
 
 export class SubmissionViewModel extends BaseViewModel {
     private readonly _deps: SubmissionViewModel.Deps;
+    get state() { return this._deps.state }
 
     constructor(base: BaseViewModel.BaseDeps, deps: SubmissionViewModel.Deps) {
         super(base)

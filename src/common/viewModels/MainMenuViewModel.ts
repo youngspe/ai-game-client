@@ -1,7 +1,7 @@
 import { BaseViewModel, ViewModel } from "./ViewModel";
 import { GameModel } from "./GameModel";
-import { FactoryKey, Inject, Target } from "checked-inject";
-import { ApiClient } from "../ApiClient";
+import { Inject, Target } from "checked-inject";
+import { ApiClient, EventStream } from "../ApiClient";
 import { ViewModelFactoryKey } from "../utils/ViewModelFactoryKey";
 import { GameComponent } from "../GameData";
 
@@ -39,9 +39,13 @@ export class MainMenuViewModel extends BaseViewModel {
 export namespace MainMenuViewModel {
     export const Deps = Inject.from({
         apiClient: ApiClient,
-        gameModel: GameComponent.Resolve(GameModel).Cyclic(),
+        gameModel: GameComponent.Resolve(GameModel.Cyclic()),
     })
 
-    export type Deps = Target<typeof Deps>
+    export interface Deps {
+        apiClient: ApiClient
+        gameModel: (stream: EventStream) => GameModel
+    }
+
     export const Factory = class extends ViewModelFactoryKey(MainMenuViewModel, Deps) { private _: any }
 }

@@ -1,7 +1,6 @@
 import React from 'react'
 import { AppRegistry } from 'react-native'
 import { App } from '../common/App'
-import { AppModel } from '../common/viewModels/AppModel'
 import { WebApp, WebAppModule } from './WebModule'
 import { Navigator } from '../common/utils/navigator'
 

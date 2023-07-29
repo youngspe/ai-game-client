@@ -10,7 +10,7 @@ import { MyTheme, useTheme } from '../Theme';
 
 export function Submission({ viewModel }: { viewModel: SubmissionViewModel }) {
     useAttachViewModel(viewModel)
-    const state = viewModel._deps.state
+    const state = viewModel.state
     const roundNumber = useReactiveProp(state, 'gameState.round.number')
     const prompt = useReactiveProp(state, 'gameState.round.prompt')
     const suggestions = useReactiveProp(state, 'playerState.styleSuggestions')

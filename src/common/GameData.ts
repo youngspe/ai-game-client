@@ -16,5 +16,5 @@ export namespace GameData {
 
 export const GameComponent = Inject.subcomponent((ct, stream: EventStream) => ct
     .addScope(GameScope)
-    .provideInstance(EventStream, stream)
+    .provideInstance(GameData.Stream, stream)
 )
