@@ -83,6 +83,6 @@ export class GameStateManager {
 
     close() { this._stream.close() }
 
-    static inject = Inject.construct(this, GameData.Stream)
-    static scope = GameScope
+    static inject = () => Inject.construct(this, GameData.Stream)
+    static scope = () => GameScope
 }

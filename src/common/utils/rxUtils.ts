@@ -7,7 +7,9 @@ export interface StateObservable<T> extends Observable<T> {
 }
 
 export function useStateObservable<T>(obs: StateObservable<T>) {
-    return useObservable((_state, input) => input.pipe(switchMap(([obs]) => obs)), obs.value, [obs])
+    const [value, setValue] = useState(obs.value)
+    useSubscribe(setValue, obs)
+    return value
 }
 
 export function useSubscribe<E>(f: (event: E) => void, obs: Observable<E>) {

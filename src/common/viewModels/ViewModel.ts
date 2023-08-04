@@ -59,17 +59,17 @@ export abstract class BaseViewModel extends Injectable implements ViewModel {
     }
 
     protected navigate<Vm extends ViewModel, Args extends any[] = []>(vm: Vm, ...args: Args) {
-        this.baseDeps.navigator.open(vm)
+        this.baseDeps.navigator().open(vm)
     }
 
     protected goBack(): boolean {
-        return this.baseDeps.navigator.back()
+        return this.baseDeps.navigator().back()
     }
 }
 
 export namespace BaseViewModel {
-    export const BaseDeps = Inject.from({
-        navigator: Navigator.Cyclic(),
+    export const BaseDeps = Inject.cyclic({
+        navigator: Navigator.Lazy(),
     })
     export type BaseDeps = Target<typeof BaseDeps>
 }

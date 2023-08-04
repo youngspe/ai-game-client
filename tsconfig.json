@@ -8,6 +8,9 @@
     "allowJs": true,
     "jsx": "react",
     "moduleResolution": "nodenext",
+    "skipLibCheck": true,
+    "inlineSourceMap": true,
+    "inlineSources": true,
   },
   "include": [
     "src/**/*"

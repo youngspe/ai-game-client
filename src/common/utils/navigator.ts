@@ -1,9 +1,8 @@
-import { Inject, Injectable, Singleton } from "checked-inject";
-import { HistoryManager, MainViewModelFactory } from "../CommonModule";
-import { ViewModel } from "../viewModels/ViewModel";
-import { Reactive } from "./Reactive";
-import { ascribe } from "./types";
-import { StateObservable } from "./rxUtils";
+import { Inject, Injectable, Singleton } from "checked-inject"
+import { HistoryManager, MainViewModelFactory } from "../CommonModule"
+import { ViewModel } from "../viewModels/ViewModel"
+import { Reactive } from "./Reactive"
+import { StateObservable } from "./rxUtils"
 
 export abstract class Navigator extends Injectable {
     abstract readonly currentViewModel: StateObservable<ViewModel>
@@ -72,6 +71,6 @@ export class DefaultNavigator extends Navigator {
         return false
     }
 
-    static Scope = Singleton
-    static inject = Inject.construct(this, HistoryManager, MainViewModelFactory).Cyclic()
+    static scope = Singleton
+    static inject = () => Inject.construct(this, HistoryManager, MainViewModelFactory)
 }

@@ -1,13 +1,11 @@
-import { Subscription } from "rxjs";
-import { GameState, PlayerState } from "../../proto/GameState";
-import { Reactive } from "../utils/Reactive";
-import { BaseViewModel } from "./ViewModel";
-import { EventStream } from "../ApiClient";
-import { ascribe } from "../utils/types";
-import { shuffle } from "../utils/rand";
-import { FactoryKey, Inject, Target } from "checked-inject";
-import { ViewModelFactoryKey } from "../utils/ViewModelFactoryKey";
-import { GameData } from "../GameData";
+import { Subscription } from "rxjs"
+import { Reactive } from "../utils/Reactive"
+import { BaseViewModel } from "./ViewModel"
+import { EventStream } from "../ApiClient"
+import { ascribe } from "../utils/types"
+import { LazyKey, Target } from "checked-inject"
+import { ViewModelFactoryKey } from "../utils/ViewModelFactoryKey"
+import { GameData } from "../GameData"
 
 export class RoundScoreViewModel extends BaseViewModel {
     private readonly _deps: RoundScoreViewModel.Args
@@ -32,14 +30,14 @@ export class RoundScoreViewModel extends BaseViewModel {
 }
 
 export namespace RoundScoreViewModel {
-    export const Deps = Inject.from({
+    export const Deps = LazyKey(() => ({
         state: GameData.State,
         stream: GameData.Stream,
-    })
+    }))
 
     export type Deps = Target<typeof Deps>
     export interface Args {
-        state: Reactive<{ gameState?: GameState, playerState?: PlayerState }>,
+        state: GameData.State,
         stream: EventStream,
     }
 

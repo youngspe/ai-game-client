@@ -10,4 +10,7 @@ export const ViewModelFactoryKey = <
 >(
     ctor: Ctor,
     ...deps: Deps
-) => FactoryKey({ base: BaseViewModel.BaseDeps, deps }, ({ base, deps }, ...args: Args) => new ctor(base, ...[...deps, ...args] as any))
+) => FactoryKey({
+    get base() { return BaseViewModel.BaseDeps },
+    deps,
+}, ({ base, deps }, ...args: Args) => new ctor(base, ...[...deps, ...args]))

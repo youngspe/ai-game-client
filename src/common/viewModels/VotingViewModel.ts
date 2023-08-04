@@ -5,7 +5,7 @@ import { ascribe } from "../utils/types";
 import { shuffle } from "../utils/rand";
 import { ViewModelFactoryKey } from "../utils/ViewModelFactoryKey";
 import { GameData } from "../GameData";
-import { Inject, Target } from "checked-inject";
+import { LazyKey, Target } from "checked-inject";
 
 export class VotingViewModel extends BaseViewModel {
     private readonly _deps: VotingViewModel.Deps
@@ -56,10 +56,10 @@ export class VotingViewModel extends BaseViewModel {
 }
 
 export namespace VotingViewModel {
-    export const Deps = Inject.from({
+    export const Deps = LazyKey(() => ({
         state: GameData.State,
         stream: GameData.Stream
-    })
+    }))
 
     export type Deps = Target<typeof Deps>
 

@@ -5,7 +5,7 @@ import { LobbyViewModel } from './LobbyViewModel';
 import { SubmissionViewModel } from './SubmissionViewModel';
 import { VotingViewModel } from './VotingViewModel';
 import { RoundScoreViewModel } from './RoundScoreViewModel';
-import { Inject, Target } from 'checked-inject';
+import { Inject, LazyKey, Target } from 'checked-inject';
 import { GameData, GameScope } from '../GameData';
 import { GameStateManager } from '../GameStateManager';
 
@@ -26,10 +26,7 @@ export class GameModel extends BaseViewModel {
     }
 
     private _updateViewModel() {
-        const getLobby = this._deps.vm.lobby
-        const getSubmission = this._deps.vm.submission
-        const getVoting = this._deps.vm.voting
-        const getRoundScore = () => this._deps.vm.score()
+        const vm = this._deps.vm
 
         return Reactive.props(this._deps.stateManager.props, [
             'gameState.started',
@@ -37,22 +34,22 @@ export class GameModel extends BaseViewModel {
             'gameState.round.judgmentEndTime',
             'gameState.round.scoreEndTime',
         ] as const, (started, round, judgmentEndTime, scoreEndTime) => {
-            if (!started) return getLobby
+            if (!started) return vm.lobby
             if (round == null) return null // TODO: endgame
-            if (judgmentEndTime == null) return getSubmission
-            if (scoreEndTime == null) return getVoting
+            if (judgmentEndTime == null) return vm.submission
+            if (scoreEndTime == null) return vm.voting
             // TODO: Round results screen
 
             return null
         }).subscribe(f => this.childViewModel.next(f == null ? null : f()))
     }
 
-    static scope = GameScope
+    static scope = () => GameScope
     static inject = () => Inject.construct(this, BaseViewModel.BaseDeps, this.Deps)
 }
 
 export namespace GameModel {
-    export const Deps = Inject.from({
+    export const Deps = LazyKey(() => ({
         stream: GameData.Stream,
         vm: {
             lobby: LobbyViewModel.Factory,
@@ -61,7 +58,7 @@ export namespace GameModel {
             score: RoundScoreViewModel.Factory
         },
         stateManager: GameStateManager,
-    })
+    }))
 
     export type Deps = Target<typeof Deps>
 }

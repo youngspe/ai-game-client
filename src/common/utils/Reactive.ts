@@ -3,11 +3,20 @@ import { StateObservable, useStateObservable } from "./rxUtils"
 import { addProp } from "./types"
 import { useEffect, useRef, useState } from "react"
 
+const _proxied = Symbol()
 const _reactive = Symbol()
+
+interface ProxiedContext<T> {
+    orig: T & object
+}
+
+interface ProxiedObject<T> {
+    [_proxied]: ProxiedContext<T>
+}
 
 interface ReactiveContext<T> {
     obs: Observable<Reactive.PropertyChange<T>>
-    orig: T
+    proxy: Reactive<T>
 }
 
 interface ReactiveObject<T> {
@@ -15,50 +24,44 @@ interface ReactiveObject<T> {
 }
 
 export type Reactive<T> = T & (
-    T extends object ? (object & ReactiveObject<T>) : unknown
+    T extends object ? (ReactiveObject<T> & ProxiedObject<T>) : unknown
 )
 
-const reactiveMap = new WeakMap<object, object>()
-
-function thisOrOrig<T>(target: T): T {
-    if (target == null || typeof target != 'object') return target
-    return (target as Partial<ReactiveObject<T>>)[_reactive]?.orig ?? target
-}
-
 export function Reactive<T>(target: T): Reactive<T> {
-    if (target == null || typeof target != 'object') return target as Reactive<T>
+    if (target == null || (typeof target != 'object' && typeof target != 'function')) return target as Reactive<T>
+    const marked: Partial<ReactiveObject<T>> = target
+    if (marked[_reactive]) return marked[_reactive].proxy
+    const proxiedContext = (target as Partial<ProxiedObject<T>>)[_proxied]
+        ?? ((target as Partial<ProxiedObject<T>>)[_proxied] = { orig: target })
 
-    const originalTarget = (target as Partial<ReactiveObject<T>>)[_reactive]?.orig
-    if (originalTarget != null && reactiveMap.has(originalTarget as object)) {
-        return reactiveMap.get(originalTarget as object) as Reactive<T>
-    }
 
-    if (reactiveMap.has(target)) return reactiveMap.get(target) as Reactive<T>
     const subject = new Subject<Reactive.PropertyChange<T>>()
+    const reactiveContext: Partial<ReactiveContext<T>> = { obs: subject.asObservable() }
+    marked[_reactive] = reactiveContext as ReactiveContext<T>
 
-    const reactiveContext: ReactiveContext<T> = {
-        obs: subject.asObservable(),
-        orig: target,
-    }
-
-    const proxy = new Proxy(target, {
+    const proxy = new Proxy(proxiedContext.orig, {
         get(target, p, receiver) {
-            if (p === _reactive) return reactiveContext
-            return Reactive(Reflect.get(target, p, receiver))
+            const value = Reflect.get(target, p, receiver)
+            if (p === _proxied) return value ?? proxiedContext
+            if (typeof p == 'string') return Reactive(value)
+            return value
         },
         set(target, p, newVal, receiver) {
             let prop = p as keyof T
             const oldVal = target[prop]
-            if (thisOrOrig(oldVal) !== thisOrOrig(newVal)) {
+            if (typeof p == 'string' && _original(oldVal) !== _original(newVal)) {
                 const out = Reflect.set(target, prop, newVal, receiver)
                 subject.next({ prop, oldVal, newVal })
                 return out
             }
             return Reflect.set(target, prop, oldVal, receiver)
         },
+        apply(target, thisArg, args) {
+            return Reflect.apply(target as any as Function, _original(thisArg), args)
+        },
     }) as Reactive<T> & object
 
-    reactiveMap.set(target, proxy)
+    reactiveContext.proxy = proxy
     return proxy
 }
 
@@ -80,24 +83,31 @@ function flattenPropPath<P extends BasePropPath>(path: P): (keyof any)[] {
     return [path]
 }
 
+function _original<T>(target: T | ProxiedObject<T>): T {
+    if (typeof target == null || (typeof target != 'object' && typeof target != 'function')) return target as T
+    const orig = (target as Partial<ProxiedObject<T>>)[_proxied]?.orig
+    if (orig && orig !== target) return _original(orig)
+    return target as T
+}
+
 export namespace Reactive {
     export type PropertyChange<T, P extends keyof T = keyof T> = {
         [K in P]-?: { prop: K, oldVal: T[K], newVal: T[K] }
     }[P]
 
     export function isReactiveObject<T>(target: T): target is object & Reactive<T> {
-        if (target == null || typeof target != 'object') return false
-        return (target as Reactive<typeof target>)[_reactive] != null
+        if (target == null || (typeof target != 'object' && typeof target != 'function')) return false
+        const _target: Partial<Reactive<typeof target>> = target
+        return _target[_reactive] != null && _target[_proxied] != null
     }
 
     export function updates<T>(target: Reactive<T>): Observable<PropertyChange<T>> {
-        if (target == null || typeof target != 'object') return NEVER
+        if (target == null || (typeof target != 'object' && typeof target != 'function')) return NEVER
         return (target as Reactive<T & object>)[_reactive].obs
     }
 
     export function original<T>(target: Reactive<T>): T {
-        if (target == null || typeof target != 'object') return target
-        return (target as Reactive<typeof target>)[_reactive].orig as T
+        return _original<T>(target)
     }
 
     export function prop<T, P extends readonly BasePropPath[]>(
@@ -117,7 +127,9 @@ export namespace Reactive {
                 constructor() {
                     super(s => {
                         s.next(target?.[key])
-                        return updates(target).pipe(filter(e => e.prop == key)).subscribe(() => {
+                        const updateObservable = updates(target)
+
+                        return updateObservable.pipe(filter(e => e.prop == key)).subscribe(() => {
                             s.next(this.value)
                         })
                     })
@@ -153,8 +165,6 @@ export namespace Reactive {
     }
 }
 
-const _useReactive = Symbol()
-
 export function useReactive<T>(target: T): T extends object ? T : { [_ in string]?: undefined } {
     if (target == null) return {} as any
     const rTarget = Reactive(target)
@@ -185,31 +195,34 @@ export function useReactive<T>(target: T): T extends object ? T : { [_ in string
 
 
     if (proxies.current == null) {
-        return Reactive.original(rTarget) as any
+        return _original(rTarget) as any
     }
 
     function getProxy<U>(obj: U, entry: Entry): U {
-        if (obj == null || typeof obj != 'object') return obj
-        if ((obj as any)[_useReactive] != null) obj = (obj as any)[_useReactive]
-        obj = Reactive.isReactiveObject(obj) ? Reactive(obj) : obj
+        if (obj == null || (typeof obj != 'object' && typeof obj != 'function')) return obj
+        obj = _original(obj)
         if (proxies.current?.has(obj)) return proxies.current.get(obj)
 
+        const proxiedContext = (obj as Partial<ProxiedObject<U>>)[_proxied] ?? { orig: obj }
 
         const proxy = new Proxy(obj as U & object, {
             get(t, p, receiver) {
-                if (p === _useReactive) return obj
+                if (p === _proxied) return proxiedContext
                 const propValue = Reflect.get(t, p, receiver)
                 if (proxies.current == null) return propValue
                 const propEntry = entry[p] ?? {}
                 entry[p] = propEntry
                 return getProxy<any>(propValue, propEntry)
             },
+            apply(target, thisArg, args) {
+                return Reflect.apply(target as any as Function, _original(thisArg), args)
+            },
         })
         proxies.current?.set(obj, proxy)
         return proxy
     }
 
-    return getProxy(Reactive.original(rTarget), subbed) as any
+    return getProxy(rTarget, subbed) as any
 }
 
 export function useReactiveProp<T, P extends readonly BasePropPath[]>(

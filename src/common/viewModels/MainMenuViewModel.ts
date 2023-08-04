@@ -1,6 +1,6 @@
 import { BaseViewModel, ViewModel } from "./ViewModel";
 import { GameModel } from "./GameModel";
-import { Inject, Target } from "checked-inject";
+import { Inject, LazyKey } from "checked-inject";
 import { ApiClient, EventStream } from "../ApiClient";
 import { ViewModelFactoryKey } from "../utils/ViewModelFactoryKey";
 import { GameComponent } from "../GameData";
@@ -37,10 +37,10 @@ export class MainMenuViewModel extends BaseViewModel {
 }
 
 export namespace MainMenuViewModel {
-    export const Deps = Inject.from({
+    export const Deps = LazyKey(() => ({
         apiClient: ApiClient,
         gameModel: GameComponent.Resolve(GameModel.Cyclic()),
-    })
+    }))
 
     export interface Deps {
         apiClient: ApiClient

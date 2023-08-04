@@ -1,8 +1,7 @@
 import { Observable, Subject, concat, of } from "rxjs"
 import { ClientEvent, ServerEvent } from "../proto/Event"
 import { TokenStore } from "./TokenStore"
-import { asyncValues } from "./utils/rxUtils"
-import { FactoryKey, Inject, Injectable, Singleton, Target } from "checked-inject"
+import { FactoryKey, Inject, Injectable, LazyKey, Singleton, Target } from "checked-inject"
 import { CommonKeys } from "./CommonModule"
 
 export type ApiResult<T = unknown> = { ok: T } | { err: Response }
@@ -196,7 +195,7 @@ export class DefaultEventStream extends EventStream {
         this._subject?.complete()
     }
 
-    static Factory = class extends FactoryKey({
+    static Factory = class extends FactoryKey(LazyKey(() => ({
         baseUrls: CommonKeys.BaseUrls,
-    }, ({ baseUrls }, gameId: string, token: string) => new DefaultEventStream(baseUrls.baseUrlWs, gameId, token)) { private _: any }
+    })), ({ baseUrls }, gameId: string, token: string) => new DefaultEventStream(baseUrls.baseUrlWs, gameId, token)) { private _: any }
 }

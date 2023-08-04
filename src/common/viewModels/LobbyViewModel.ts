@@ -1,4 +1,4 @@
-import { Inject, Target } from "checked-inject";
+import { Inject, LazyKey, Target } from "checked-inject";
 import { GameState, PlayerInfo, PlayerState } from "../../proto/GameState";
 import { EventStream } from "../ApiClient";
 import { Reactive } from "../utils/Reactive";
@@ -24,11 +24,11 @@ export class LobbyViewModel extends BaseViewModel {
 }
 
 export namespace LobbyViewModel {
-    export const Deps = Inject.from({
+    export const Deps = LazyKey(() => ({
         state: GameData.State,
         stream: GameData.Stream,
-    })
+    }))
+    
     export type Deps = Target<typeof Deps>
     export class Factory extends ViewModelFactoryKey(LobbyViewModel, Deps) { private _: any }
-
 }

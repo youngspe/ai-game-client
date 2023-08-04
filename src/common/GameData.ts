@@ -10,7 +10,7 @@ export namespace GameData {
     export class Stream extends TypeKey<EventStream>() { private _: any }
     export const State = class extends TypeKey({
         default: Inject.map(GameStateManager, gsm => gsm.props),
-    }) { private _: any; static scope = GameScope }
+    }) { private _: any; static scope = () => GameScope }
     export type State = Target<typeof State>
 }
 

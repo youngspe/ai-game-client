@@ -50,6 +50,7 @@ const config = {
     resolve: {
         extensions: ['.tsx', '.ts', '.jsx', '.js', '...'],
     },
+    target: ['web', 'es2016'],
 };
 
 module.exports = () => {
@@ -59,6 +60,7 @@ module.exports = () => {
 
     // } else {
     config.mode = 'development';
+    config.devtool = 'source-map'
     // }
     return config;
 };

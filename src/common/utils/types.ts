@@ -40,11 +40,6 @@ type IsSingleLiteral<T> = And<[IsSingleType<T>, IsLiteral<T>]>
     const _test2: IsSingleLiteral<1 | 2> = false
     const _test3: IsSingleLiteral<string> = false
 }
-// type T2 = SingleType<1 | 2>
-
-// type Asdf =
-//     | ('asdf' extends infer K ? (('asdf' | 'qwer') extends K ? K : never) : never)
-//     | ('qwer' extends infer K ? (('asdf' | 'qwer') extends K ? K : never) : never)
 
 type Allowed<T, K> =
     K extends keyof T ? [never]
